@@ -192,7 +192,7 @@ func paintDesktop() -> (pixels: CVPixelBuffer, image: CGImage) {
     }
     text(ctx, "Lid angle", at: CGPoint(x: notes.minX + w * 0.022, y: notes.maxY - h * 0.095),
          size: h * 0.030, weight: .semibold, color: ns(0x14161C))
-    text(ctx, "0°  shut     ·     70°  the fold begins     ·     113°  open", at: CGPoint(x: notes.minX + w * 0.022, y: notes.maxY - h * 0.135),
+    text(ctx, "0°  shut     ·     80°  the fold begins     ·     113°  open", at: CGPoint(x: notes.minX + w * 0.022, y: notes.maxY - h * 0.135),
          size: h * 0.0165, weight: .regular, color: ns(0x6A7080))
     for row in 0..<5 {
         let y = notes.maxY - h * 0.185 - CGFloat(row) * h * 0.028
@@ -452,7 +452,7 @@ func dither(_ ctx: CGContext) {
 func foldGIF(to url: URL) {
     let stageWidth = 1360, stageHeight = 900
     var model = LidModel(angle: 113)
-    model.startAngle = 70
+    model.startAngle = 80
 
     var tilts: [Double] = []
     func run(_ from: Double, _ to: Double, _ seconds: Double) {

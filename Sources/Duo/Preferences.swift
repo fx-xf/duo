@@ -83,7 +83,7 @@ final class Preferences: ObservableObject {
             Key.shadow: BendStyle.silk.preset.shadow,
             Key.followLid: true,
             Key.manualAngle: 136.0,
-            Key.startAngle: 70.0,
+            Key.startAngle: 80.0,
             Key.sound: true,
             Key.bendCount: 0,
         ])

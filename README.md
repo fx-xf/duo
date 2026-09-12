@@ -58,7 +58,7 @@ hinge one degree at a time, read straight from the Mac's own sensor.
 1. Download the latest build from [**Releases**](https://github.com/fx-xf/duo/releases/latest), unzip it and drag **Duo** into Applications.
 2. macOS will refuse to open it the first time — the app is signed ad-hoc, not notarised. Open **System Settings → Privacy & Security**, scroll down and choose **Open Anyway**.
 3. Allow **Screen Recording** when Duo asks, then **Quit & Reopen**. Without it Duo has nothing to fold.
-4. Duo lives in the menu bar. Close the lid past 70° and watch.
+4. Duo lives in the menu bar. Close the lid past 80° and watch.
 
 > Prefer to build it yourself? [Jump down](#build-from-source) — a locally built copy skips the Gatekeeper detour entirely.
 
@@ -80,7 +80,7 @@ hinge one degree at a time, read straight from the Mac's own sensor.
 
 | Setting | Default | What it does |
 |---|---|---|
-| **Starts below** | 70° | Above this hinge angle nothing happens, however you move the lid. Below it, the glass tilts with the hinge. |
+| **Starts below** | 80° | Above this hinge angle nothing happens, however you move the lid. Below it, the glass tilts with the hinge. |
 | **Perspective** | 100% | Where you sit. 100% puts your eye half a metre from the screen; less reads as sitting farther back. |
 | **Variable blur** | 65% | How quickly frost grows with the gap. |
 | **Shadow** | 35% | How quickly light is lost. |

@@ -5,7 +5,7 @@ import Foundation
 struct LidModel {
     /// The fold starts once the lid is closed past this angle. Above it the
     /// desktop is left alone, however far the lid is opened or nudged.
-    var startAngle: Double = 70
+    var startAngle: Double = 80
 
     private(set) var springAngle: Double
     private(set) var springVelocity: Double = 0

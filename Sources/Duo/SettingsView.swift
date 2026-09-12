@@ -114,7 +114,12 @@ struct AppearancePane: View {
                 }
 
                 GroupBox {
-                    VStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        angleRow("Starts below", value: $prefs.startAngle)
+                        Text("Nothing happens above this angle, however you move the lid.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Divider()
                         percentRow("Perspective", value: $prefs.perspective)
                         Divider()
                         percentRow("Variable blur", value: $prefs.blur)
@@ -125,6 +130,20 @@ struct AppearancePane: View {
                 }
             }
             .padding(24)
+        }
+    }
+
+    /// Where the fold starts, in degrees of hinge angle.
+    private func angleRow(_ title: String, value: Binding<Double>) -> some View {
+        HStack(spacing: 14) {
+            Text(title)
+                .font(.system(size: 12))
+                .frame(width: 96, alignment: .leading)
+            Slider(value: value, in: 30...110)
+            Text("\(Int(value.wrappedValue))°")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 40, alignment: .trailing)
         }
     }
 
@@ -267,25 +286,6 @@ struct GeneralPane: View {
                                     launchAtLogin = SMAppService.mainApp.status == .enabled
                                 }
                             }
-                    }
-                    .padding(6)
-                }
-
-                GroupBox {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 14) {
-                            Text("Starts below")
-                                .font(.system(size: 12))
-                                .frame(width: 110, alignment: .leading)
-                            Slider(value: $prefs.startAngle, in: 30...110)
-                            Text("\(Int(prefs.startAngle))°")
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 40, alignment: .trailing)
-                        }
-                        Text("The desktop is left alone until the lid closes past this angle; from there the glass folds with the lid.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
                     }
                     .padding(6)
                 }
