@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
-    <img src="docs/hero-light.png" alt="Duo — your desktop folds away as you close the lid" width="100%">
+    <img src="docs/hero-light.png" alt="Duo — the iPhone Duo fold animation on a MacBook: your desktop folds away as you close the lid" width="100%">
   </picture>
 </p>
 
@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/fold.gif" width="760" alt="The desktop folding away as the lid closes, and snapping back as it opens">
+  <img src="docs/fold.gif" width="760" alt="The iPhone Duo fold animation on a MacBook: the desktop folding away as the lid closes, and snapping back as it opens">
 </p>
 
 <p align="center">
@@ -27,10 +27,11 @@
 
 Close a MacBook and the lid moves. The picture on it doesn't have to.
 
-Duo pins your desktop to the plane it was sitting on and then draws what you would
-actually see through the glass as the panel tilts away from you: the desktop settles
-downward, frosts over, dims — and snaps back the moment you open up. It follows the
-hinge one degree at a time, read straight from the Mac's own sensor.
+Duo brings the iPhone Duo fold animation to a laptop. It pins your desktop to the plane
+it was sitting on and then draws what you would actually see through the glass as the
+panel tilts away from you: the desktop settles downward, frosts over, dims — and snaps
+back the moment you open up. There is no canned animation anywhere in it; the fold
+follows the hinge one degree at a time, read straight from the Mac's own sensor.
 
 <br>
 
