@@ -26,12 +26,17 @@ else
   echo "note: no \"$IDENTITY\" certificate — signing ad-hoc, Screen Recording resets on every build"
   codesign --force --sign - --identifier app.duo.Duo "$APP"
 fi
-echo "built $PWD/$APP"
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 
 if [ "${INSTALL:-1}" = 1 ]; then
   pkill -x Duo 2>/dev/null && sleep 0.5 || true
   rm -rf /Applications/Duo.app
   ditto "$APP" /Applications/Duo.app
-  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/Duo.app
+  # Drop the staging bundle: left behind, Launch Services lists Duo twice.
+  "$LSREGISTER" -u "$PWD/$APP" 2>/dev/null || true
+  rm -rf "$APP"
+  "$LSREGISTER" -f /Applications/Duo.app
   echo "installed /Applications/Duo.app"
+else
+  echo "built $PWD/$APP"
 fi
