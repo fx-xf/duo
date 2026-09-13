@@ -174,6 +174,7 @@ final class BendEngine: ObservableObject {
         lastReading = target
 
         model.startAngle = prefs.startAngle
+        model.dynamic = prefs.dynamicFold
         let fold = model.step(target: target, dt: dt)
         progress = fold
 

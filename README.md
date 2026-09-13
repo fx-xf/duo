@@ -82,6 +82,7 @@ follows the hinge one degree at a time, read straight from the Mac's own sensor.
 | Setting | Default | What it does |
 |---|---|---|
 | **Starts below** | 80° | Above this hinge angle nothing happens, however you move the lid. Below it, the glass tilts with the hinge. |
+| **Follow every movement** | off | Turn it on and the fold leans in whenever the hinge turns, then lets go once the lid settles. Shut the lid in a hurry and the full fold plays as usual — a touch earlier, because a lid coming down that fast is on its way closed. |
 | **Perspective** | 100% | Where you sit. 100% puts your eye half a metre from the screen; less reads as sitting farther back. |
 | **Variable blur** | 65% | How quickly frost grows with the gap. |
 | **Shadow** | 35% | How quickly light is lost. |

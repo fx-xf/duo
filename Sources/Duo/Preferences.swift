@@ -59,6 +59,9 @@ final class Preferences: ObservableObject {
     /// The fold starts once the lid closes past this hinge angle.
     @Published var startAngle: Double { didSet { defaults.set(startAngle, forKey: Key.startAngle) } }
 
+    /// Fold on every movement of the lid, not only the last stretch before shut.
+    @Published var dynamicFold: Bool { didSet { defaults.set(dynamicFold, forKey: Key.dynamicFold) } }
+
     @Published var soundEnabled: Bool { didSet { defaults.set(soundEnabled, forKey: Key.sound) } }
     @Published var paused: Bool = false
     @Published var bendCount: Int { didSet { defaults.set(bendCount, forKey: Key.bendCount) } }
@@ -71,6 +74,7 @@ final class Preferences: ObservableObject {
         static let followLid = "followLid"
         static let manualAngle = "manualAngle"
         static let startAngle = "foldStartAngle"
+        static let dynamicFold = "dynamicFold"
         static let sound = "soundEnabled"
         static let bendCount = "bendCount"
     }
@@ -84,6 +88,7 @@ final class Preferences: ObservableObject {
             Key.followLid: true,
             Key.manualAngle: 136.0,
             Key.startAngle: 80.0,
+            Key.dynamicFold: false,
             Key.sound: true,
             Key.bendCount: 0,
         ])
@@ -94,6 +99,7 @@ final class Preferences: ObservableObject {
         followLid = defaults.bool(forKey: Key.followLid)
         manualAngle = defaults.double(forKey: Key.manualAngle)
         startAngle = defaults.double(forKey: Key.startAngle)
+        dynamicFold = defaults.bool(forKey: Key.dynamicFold)
         soundEnabled = defaults.bool(forKey: Key.sound)
         bendCount = defaults.integer(forKey: Key.bendCount)
     }

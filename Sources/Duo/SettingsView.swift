@@ -115,6 +115,12 @@ struct AppearancePane: View {
 
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {
+                        Toggle("Follow every movement", isOn: $prefs.dynamicFold)
+                            .toggleStyle(.switch)
+                        Text("The fold leans in whenever the hinge turns and lets go once the lid stops. Close it in a hurry and the full fold still plays.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Divider()
                         angleRow("Starts below", value: $prefs.startAngle)
                         Text("Nothing happens above this angle, however you move the lid.")
                             .font(.system(size: 11))
