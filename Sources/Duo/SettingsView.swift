@@ -117,7 +117,7 @@ struct AppearancePane: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Toggle("Follow every movement", isOn: $prefs.dynamicFold)
                             .toggleStyle(.switch)
-                        Text("The fold leans in whenever the hinge turns and lets go once the lid stops. Close it in a hurry and the full fold still plays.")
+                        Text("Folds by however far you have closed the lid from where it last rested, and hands the desktop back the moment it stops — at any angle. The threshold below is ignored while this is on.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         Divider()

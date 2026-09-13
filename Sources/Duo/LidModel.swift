@@ -6,41 +6,41 @@ struct LidModel {
     /// The fold starts once the lid is closed past this angle. Above it the
     /// desktop is left alone, however far the lid is opened or nudged.
     var startAngle: Double = 80
-    /// Follow every movement of the lid rather than only the last stretch before
-    /// shut: the fold leans in while the hinge turns and lets go once it settles.
+    /// Measure the fold from wherever the lid last came to rest instead of from
+    /// a fixed angle: every movement folds, and a lid that stops gets its
+    /// desktop back, at whatever angle you left it.
     var dynamic = false
 
     private(set) var springAngle: Double
     private(set) var springVelocity: Double = 0
-    /// How fast the hinge is turning, degrees per second, smoothed.
-    private(set) var hingeSpeed: Double = 0
     /// Degrees the glass has tilted away from the viewer.
     private(set) var tilt: Double = 0
     /// `tilt` as a fraction of the way from the start angle to shut.
     private(set) var progress: Double = 0
 
-    private var lastTarget: Double
-    private var motionTilt: Double = 0
+    /// The angle the dynamic fold is measured from.
+    private var anchor: Double
+    private var stillAngle: Double
+    private var stillFor: Double = 0
 
+    /// Past this the panel is nearly edge-on and there is nothing left to show.
+    private static let maxTilt = 85.0
     /// The sensor reports whole degrees and a hand on the deck rattles them by
-    /// one, so nothing slower than this counts as the lid moving.
-    private static let stillSpeed = 12.0
-    private static let motionGain = 0.18
-    private static let motionCap = 18.0
-    /// A lid coming down in a hurry is probably on its way shut, so the fold may
-    /// start this many degrees earlier than the threshold.
-    private static let anticipation = 25.0
+    /// one, so the first couple of degrees never count as a fold.
+    private static let deadZone = 2.5
+    /// The lid is holding still while the sensor stays inside this window.
+    private static let stillWindow = 2.0
+    private static let settleDelay = 0.35
+    private static let releaseTime = 0.45
 
     init(angle: Double) {
         springAngle = angle
-        lastTarget = angle
+        anchor = angle
+        stillAngle = angle
     }
 
     @discardableResult
     mutating func step(target: Double, dt: Double) -> Double {
-        hingeSpeed += ((target - lastTarget) / max(dt, 1e-4) - hingeSpeed) * min(1, dt / 0.12)
-        lastTarget = target
-
         // Tight on the way down so the glass keeps up with the lid; a softer,
         // slightly bouncy spring on the way up gives the snap back.
         let closing = target < springAngle
@@ -49,21 +49,32 @@ struct LidModel {
         springVelocity += (-stiffness * (springAngle - target) - damping * springVelocity) * dt
         springAngle += springVelocity * dt
 
-        let start = max(startAngle, 1)
-        let lead = dynamic ? min(Self.anticipation, max(0, (-hingeSpeed - 40) * 0.25)) : 0
-        let angleTilt = max(0, start + lead - springAngle)
+        if abs(target - stillAngle) > Self.stillWindow {
+            stillAngle = target
+            stillFor = 0
+        } else {
+            stillFor += dt
+        }
 
-        // Movement alone earns a little tilt, given back as soon as the lid stops.
-        let wanted = dynamic
-            ? min(Self.motionCap, max(0, (abs(hingeSpeed) - Self.stillSpeed) * Self.motionGain))
-            : 0
-        motionTilt += (wanted - motionTilt) * min(1, dt / (wanted > motionTilt ? 0.06 : 0.22))
-        // A tenth of a degree is nothing to look at, and an exponential never
-        // quite lands: cut it there so a settled lid really is done folding.
-        if wanted <= 0, motionTilt < 0.1 { motionTilt = 0 }
+        guard dynamic else {
+            anchor = springAngle
+            tilt = min(Self.maxTilt, max(0, max(startAngle, 1) - springAngle))
+            progress = min(1, tilt / max(startAngle, 1))
+            return progress
+        }
 
-        tilt = max(angleTilt, motionTilt)
-        progress = min(1, tilt / start)
+        if springAngle > anchor {
+            // Opening hands the reference back: only closing folds.
+            anchor = springAngle
+        } else if stillFor > Self.settleDelay {
+            // A lid that has stopped becomes the new reference, so the desktop
+            // unfolds wherever you leave it — any angle, right up to shut.
+            anchor += (springAngle - anchor) * min(1, dt / Self.releaseTime)
+            if anchor - springAngle < 0.1 { anchor = springAngle }
+        }
+
+        tilt = min(Self.maxTilt, max(0, anchor - springAngle - Self.deadZone))
+        progress = min(1, tilt / max(startAngle, 1))
         return progress
     }
 }
