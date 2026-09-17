@@ -5,6 +5,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# The Command Line Tools that came with macOS 27 carry an SDK whose SwiftUI
+# declares @State as a macro, but not the plugin that implements it. Xcode's
+# toolchain has a matching pair, so prefer it when it is installed.
+if [ -z "${DEVELOPER_DIR:-}" ] && [ -d /Applications/Xcode.app/Contents/Developer ]; then
+  export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+fi
+
 CONFIG="${1:-release}"
 APP="build/Duo.app"
 

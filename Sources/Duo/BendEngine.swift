@@ -45,7 +45,7 @@ final class BendEngine: ObservableObject {
         rawAngle = angle
         lastReading = angle
 
-        Log.engine.info("""
+        Log.engine.notice("""
             launch: lid sensor \(self.hasSensor ? "found" : "missing", privacy: .public), \
             angle \(Int(angle), privacy: .public)°, \
             screen recording \(DesktopCapture.hasPermission ? "granted" : "missing", privacy: .public), \
@@ -63,7 +63,12 @@ final class BendEngine: ObservableObject {
         rebuildOverlay()
 
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
-            .sink { [weak self] _ in self?.rebuildOverlay() }
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.rebuildOverlay()
+                // A display that reconfigured itself leaves the old stream dead.
+                self.capture.restart()
+            }
             .store(in: &cancellables)
 
         // Deliberately no reset around sleep: the overlay keeps its last, folded
@@ -82,6 +87,17 @@ final class BendEngine: ObservableObject {
                 self.displayAsleep = false
                 self.capture.retrySoon()
                 Log.engine.info("display awake at \(Int(self.lastReading), privacy: .public)°")
+            }
+            .store(in: &cancellables)
+        workspace.publisher(for: NSWorkspace.didWakeNotification)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.displayAsleep = false
+                // Sleep is hard on both of these: the stream rarely survives it,
+                // and the sensor's HID handle does not always come back either.
+                self.capture.restart()
+                self.sensor = LidAngleSensor() ?? self.sensor
+                Log.engine.notice("woke at \(Int(self.lastReading), privacy: .public)°, taking a fresh stream")
             }
             .store(in: &cancellables)
 
@@ -166,12 +182,22 @@ final class BendEngine: ObservableObject {
         // close, and on a still desktop it delivers next to nothing anyway.
         if !capture.isRunning, !displayAsleep {
             capture.start(displayID: overlay.displayID, pixelSize: overlay.pixelSize, fps: 60)
+        } else {
+            capture.checkHealth()
         }
 
         let target = currentTarget()
         if rawAngle != target { rawAngle = target }
         let lidMoving = abs(target - lastReading) > 0.25
         lastReading = target
+
+        // The screens-woke notification does not always arrive — on this Mac it
+        // never does — so a lid on the move is proof enough that the display is
+        // back and the capture is worth another try.
+        if lidMoving, displayAsleep {
+            displayAsleep = false
+            capture.retrySoon()
+        }
 
         model.startAngle = prefs.startAngle
         model.dynamic = prefs.dynamicFold
