@@ -107,7 +107,6 @@ struct WidgetPreview: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.white.opacity(0.08)))
-        .environment(\.colorScheme, .dark)
         .onReceive(clock) { _ in step = (step + 1) % Self.script.count }
     }
 
@@ -167,19 +166,6 @@ private struct MiniDock: View {
         }
         .padding(.horizontal, height * 0.16)
         .frame(height: height)
-        .modifier(DockGlass(height: height))
-    }
-}
-
-private struct DockGlass: ViewModifier {
-    let height: CGFloat
-
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: height * 0.38, style: .continuous)
-        if #available(macOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
-        } else {
-            content.background(.ultraThinMaterial, in: shape)
-        }
+        .modifier(SystemGlass(shape: RoundedRectangle(cornerRadius: height * 0.38, style: .continuous)))
     }
 }

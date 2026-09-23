@@ -256,7 +256,7 @@ final class WidgetShelf: ObservableObject {
     }
 
     private func makeWindow(_ side: ShelfSide) -> NSWindow {
-        let window = NSWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: false)
+        let window = ShelfWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: false)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false
@@ -271,6 +271,16 @@ final class WidgetShelf: ObservableObject {
 
 fileprivate enum ShelfSide: Hashable {
     case leading, trailing
+}
+
+/// Never takes focus, yet draws as if it had it. Glass in an inactive window is
+/// flattened to a dull grey, and these windows are never active — the Dock's
+/// never looks inactive, so neither may they.
+private final class ShelfWindow: NSWindow {
+    override var isKeyWindow: Bool { true }
+    override var isMainWindow: Bool { true }
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }
 
 fileprivate final class ShelfState: ObservableObject {
@@ -304,5 +314,6 @@ private struct ShelfSideView: View {
                     gap: state.gap,
                     towardDock: towardDock)
             .padding(18)
+            .environment(\.controlActiveState, .key)
     }
 }

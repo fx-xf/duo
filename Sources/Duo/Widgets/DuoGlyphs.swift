@@ -21,27 +21,29 @@ enum WidgetKind: String, CaseIterable, Hashable, Sendable {
 
 // MARK: - Bubble
 
-/// One widget: the glyph, white on a disc of dark liquid glass.
+/// One widget: the glyph on a disc of the Dock's own glass.
 struct WidgetBubble: View {
     let face: WidgetFace
     let size: CGFloat
 
     var body: some View {
         DuoGlyph(face: face, canvas: size * 0.8)
-            .environment(\.colorScheme, .dark)
             .frame(width: size, height: size)
-            .modifier(DarkGlassDisc())
+            .modifier(SystemGlass(shape: Circle()))
     }
 }
 
-private struct DarkGlassDisc: ViewModifier {
+/// The glass the Dock is made of: the standard system glass, left untinted, so
+/// it follows the Liquid Glass choice in System Settings exactly as the Dock
+/// does, and the glyph on it takes the system's light or dark appearance.
+struct SystemGlass<S: Shape>: ViewModifier {
+    let shape: S
+
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.glassEffect(.regular.tint(Color.black.opacity(0.62)), in: Circle())
+            content.glassEffect(.regular, in: shape)
         } else {
-            content
-                .background(Circle().fill(Color.black.opacity(0.72)))
-                .background(.ultraThinMaterial, in: Circle())
+            content.background(.ultraThinMaterial, in: shape)
         }
     }
 }
