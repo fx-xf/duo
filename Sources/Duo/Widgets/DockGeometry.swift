@@ -80,8 +80,8 @@ enum DockProbe {
 
     /// Without Accessibility: count what the Dock shows and lay it out the way
     /// the Dock does. The proportions were measured off a macOS 27 Dock at a
-    /// 58 pt tile: icons 62 pt apart, 28 pt more per separator, a 67 pt pill
-    /// floating 6 pt off the edge. Close, not exact.
+    /// 58 pt tile: icons 62 pt apart, 28 pt more per separator, a 74 pt pill
+    /// floating 4 pt off the edge. Close, not exact.
     private static func estimate(edge: DockEdge, tile: CGFloat, screen: NSScreen, prefs: UserDefaults?) -> CGRect {
         func bundleIDs(_ key: String) -> [String] {
             (prefs?.array(forKey: key) as? [[String: Any]] ?? [])
@@ -100,9 +100,9 @@ enum DockProbe {
 
         let items = 1 + persistent.count + middle.count + others + 1
         let separators = (middle.isEmpty ? 0 : 1) + 1
-        let thickness = tile * 1.155
-        let length = CGFloat(items) * tile * 1.07 + CGFloat(separators) * tile * 0.48 + tile * 0.2
-        let offEdge: CGFloat = 6
+        let thickness = tile * 74 / 58
+        let length = CGFloat(items) * tile * 1.07 + CGFloat(separators) * tile * 0.48 + tile * 0.25
+        let offEdge: CGFloat = 4
 
         switch edge {
         case .bottom:

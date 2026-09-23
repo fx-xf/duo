@@ -33,18 +33,43 @@ struct WidgetBubble: View {
     }
 }
 
-/// The glass the Dock is made of: the standard system glass, left untinted, so
-/// it follows the Liquid Glass choice in System Settings exactly as the Dock
-/// does, and the glyph on it takes the system's light or dark appearance.
+/// The glass the Dock is made of. The Dock applies the tint set in System
+/// Settings → Appearance; standard app glass does not, so it is applied here
+/// by hand, on top of the same system glass, and follows the slider live.
 struct SystemGlass<S: Shape>: ViewModifier {
     let shape: S
+    @ObservedObject private var tint = GlassTint.shared
+    @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
+        let wash = shape.fill((scheme == .dark ? Color.black : Color.white).opacity(tint.opacity))
         if #available(macOS 26.0, *) {
-            content.glassEffect(.regular, in: shape)
+            content.background(wash).glassEffect(.regular, in: shape)
         } else {
-            content.background(.ultraThinMaterial, in: shape)
+            content.background(wash).background(.ultraThinMaterial, in: shape)
         }
+    }
+}
+
+/// The Liquid Glass tint chosen in System Settings, from 0 (clear) upward.
+final class GlassTint: ObservableObject {
+    static let shared = GlassTint()
+
+    @Published private(set) var amount: Double = 0
+    private var timer: Timer?
+
+    /// Calibrated against the Dock itself: at a setting of 0.28 it takes a
+    /// backdrop of 203 down to 80, where untinted glass only reaches 170.
+    var opacity: Double { min(0.85, amount * 1.92) }
+
+    private init() {
+        read()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in self?.read() }
+    }
+
+    private func read() {
+        let value = UserDefaults.standard.double(forKey: "NSGlassTintAmount")
+        if value != amount { amount = value }
     }
 }
 
