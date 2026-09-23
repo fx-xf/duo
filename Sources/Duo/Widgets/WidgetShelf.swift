@@ -95,8 +95,8 @@ extension AnyTransition {
 
 // MARK: - The live shelf
 
-/// System widgets beside the Dock: battery always, the rest when they have
-/// something to say. Two click-through windows, one either side of the Dock.
+/// System widgets beside the Dock: the Duo glyph always, a headset while one is
+/// playing. Two click-through windows, one either side of the Dock.
 final class WidgetShelf: ObservableObject {
     @Published private(set) var dockIsExact = false
 
@@ -106,9 +106,6 @@ final class WidgetShelf: ObservableObject {
 
     private var windows: [ShelfSide: NSWindow] = [:]
     private var layout: DockLayout?
-    private var volumeUntil = Date.distantPast
-    private var networkUntil = Date.distantPast
-    private var expiry: DispatchWorkItem?
     private var dockTimer: Timer?
     private var live = Set<AnyCancellable>()
     private var cancellables = Set<AnyCancellable>()
@@ -140,18 +137,6 @@ final class WidgetShelf: ObservableObject {
             .receive(on: RunLoop.main)
             .sink { [weak self] in DispatchQueue.main.async { self?.refresh() } }
             .store(in: &live)
-        status.volumeChanged
-            .sink { [weak self] in
-                self?.volumeUntil = Date().addingTimeInterval(2.2)
-                self?.refresh()
-            }
-            .store(in: &live)
-        status.networkChanged
-            .sink { [weak self] in
-                self?.networkUntil = Date().addingTimeInterval(3.5)
-                self?.refresh()
-            }
-            .store(in: &live)
 
         // The Dock grows and shrinks as apps come and go; follow it.
         let workspace = NSWorkspace.shared.notificationCenter
@@ -176,7 +161,6 @@ final class WidgetShelf: ObservableObject {
         live.removeAll()
         dockTimer?.invalidate()
         dockTimer = nil
-        expiry?.cancel()
         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
             state.leading = []
             state.trailing = []
@@ -189,19 +173,12 @@ final class WidgetShelf: ObservableObject {
 
     // MARK: what shows
 
-    /// Battery always; headphones while connected; network while it is down
-    /// and for a moment after it changes; volume for a moment after it moves.
+    /// The Duo glyph — battery, network and volume in one, as on the iPhone Duo —
+    /// always; a headset on the other side for as long as it is the output.
     private func refresh(staggered: Bool = false) {
         guard prefs.widgetsEnabled else { return }
-        let now = Date()
-        var visible = Set<WidgetKind>()
-        if status.battery != nil { visible.insert(.battery) }
-        if now < volumeUntil { visible.insert(.volume) }
-        if status.audio.headphones != nil { visible.insert(.headphones) }
-        if status.network == .offline || now < networkUntil { visible.insert(.network) }
-
-        let leading = [WidgetKind.battery, .volume].filter(visible.contains)
-        let trailing = [WidgetKind.headphones, .network].filter(visible.contains)
+        let leading: [WidgetKind] = [.duo]
+        let trailing: [WidgetKind] = status.audio.headphones != nil ? [.headphones] : []
 
         if staggered {
             for (index, kind) in (leading + trailing).enumerated() {
@@ -219,27 +196,16 @@ final class WidgetShelf: ObservableObject {
                 state.trailing = trailing
             }
         }
-
-        // Come back when the next transient widget is due to go.
-        expiry?.cancel()
-        let upcoming = [volumeUntil, networkUntil].filter { $0 > now }.min()
-        if let upcoming {
-            let work = DispatchWorkItem { [weak self] in self?.refresh() }
-            expiry = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + upcoming.timeIntervalSince(now) + 0.02, execute: work)
-        }
     }
 
     fileprivate func face(for kind: WidgetKind) -> WidgetFace {
+        let audio = status.audio
         switch kind {
-        case .battery:
-            return .battery(status.battery ?? BatteryState(level: 1, isCharging: false, isPluggedIn: true, isLowPower: false))
-        case .volume:
-            return .volume(level: status.audio.volume, muted: status.audio.isMuted)
+        case .duo:
+            return .duo(battery: status.battery, network: status.network, volume: audio.volume, muted: audio.isMuted)
         case .headphones:
-            return .headphones(status.audio.headphones ?? .headphones, battery: status.headphoneBattery)
-        case .network:
-            return .network(status.network)
+            return .headphones(audio.headphones ?? .headphones, battery: status.headphoneBattery,
+                               volume: audio.volume, muted: audio.isMuted)
         }
     }
 

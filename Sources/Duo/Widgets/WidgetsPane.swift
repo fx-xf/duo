@@ -29,13 +29,9 @@ struct WidgetsPane: View {
 
                     GroupBox {
                         VStack(alignment: .leading, spacing: 9) {
-                            rule("battery.75percent", "Battery", "Always. Green while charging, yellow in Low Power Mode, red when low.")
+                            rule("circle.dashed", "Duo", "Always. The battery on the ring — green while charging, yellow in Low Power Mode, red when low — the network in the middle, the volume on the four dots.")
                             Divider()
-                            rule("airpodspro", "Headphones", "While a Bluetooth headset is playing, with its battery when macOS reports it.")
-                            Divider()
-                            rule("wifi", "Network", "While the connection is down, and for a moment after it changes.")
-                            Divider()
-                            rule("speaker.wave.2", "Volume", "For a moment after the volume moves.")
+                            rule("airpodspro", "Headphones", "While a Bluetooth headset is the output: its battery on the ring, the buds in blue.")
                         }
                         .padding(6)
                     }
@@ -120,35 +116,29 @@ struct WidgetPreview: View {
         var trailing: [WidgetItem]
     }
 
-    private static func battery(_ level: Double, charging: Bool = false) -> WidgetItem {
-        WidgetItem(kind: .battery, face: .battery(BatteryState(level: level, isCharging: charging,
-                                                               isPluggedIn: charging, isLowPower: false)))
+    private static func duo(_ level: Double, charging: Bool = false,
+                            network: NetworkState = .wifi(bars: 3), volume: Double = 0.5) -> WidgetItem {
+        WidgetItem(kind: .duo, face: .duo(battery: BatteryState(level: level, isCharging: charging,
+                                                                isPluggedIn: charging, isLowPower: false),
+                                          network: network, volume: volume, muted: false))
     }
 
-    private static func volume(_ level: Double) -> WidgetItem {
-        WidgetItem(kind: .volume, face: .volume(level: level, muted: false))
-    }
-
-    private static let airPods = WidgetItem(kind: .headphones, face: .headphones(.airPodsPro, battery: 0.85))
-
-    private static func network(_ state: NetworkState) -> WidgetItem {
-        WidgetItem(kind: .network, face: .network(state))
+    private static func airPods(volume: Double) -> WidgetItem {
+        WidgetItem(kind: .headphones, face: .headphones(.airPodsPro, battery: 0.85, volume: volume, muted: false))
     }
 
     /// Switched on, a volume nudge, AirPods arriving, the network dropping and
     /// coming back, a charger going in, AirPods leaving — then round again.
     private static let script: [Frame] = [
         Frame(leading: [], trailing: []),
-        Frame(leading: [battery(0.62)], trailing: []),
-        Frame(leading: [battery(0.62), volume(0.5)], trailing: []),
-        Frame(leading: [battery(0.62), volume(0.75)], trailing: []),
-        Frame(leading: [battery(0.62)], trailing: [airPods]),
-        Frame(leading: [battery(0.62)], trailing: [airPods, network(.offline)]),
-        Frame(leading: [battery(0.62)], trailing: [airPods, network(.wifi(bars: 3))]),
-        Frame(leading: [battery(0.62)], trailing: [airPods]),
-        Frame(leading: [battery(0.63, charging: true)], trailing: [airPods]),
-        Frame(leading: [battery(0.64, charging: true)], trailing: []),
-        Frame(leading: [battery(0.64)], trailing: []),
+        Frame(leading: [duo(0.62)], trailing: []),
+        Frame(leading: [duo(0.62, volume: 0.75)], trailing: []),
+        Frame(leading: [duo(0.62, volume: 0.75)], trailing: [airPods(volume: 0.75)]),
+        Frame(leading: [duo(0.62, network: .offline, volume: 0.75)], trailing: [airPods(volume: 0.75)]),
+        Frame(leading: [duo(0.62, volume: 0.75)], trailing: [airPods(volume: 0.75)]),
+        Frame(leading: [duo(0.63, charging: true, volume: 0.75)], trailing: [airPods(volume: 0.75)]),
+        Frame(leading: [duo(0.64, charging: true, volume: 0.75)], trailing: []),
+        Frame(leading: [duo(0.64, volume: 0.5)], trailing: []),
     ]
 }
 

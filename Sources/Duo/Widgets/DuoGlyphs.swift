@@ -1,214 +1,245 @@
 import SwiftUI
 
-// The visual language here — a ring open at the bottom, three-band Wi-Fi, four
-// volume dots in the gap, the charging bolt — follows DuoBar by Mikeli7666
-// (MIT), split out of one menu bar glyph into separate widgets.
+// The glyph is DuoBar's, by Mike Li (MIT): the same ring, open at the bottom
+// for four volume dots, the same three-band Wi-Fi, the same bolt, drawn from the
+// same measurements. Every number below is in DuoBar's 32 pt canvas and scaled
+// from there, so the proportions stay exactly its own at any size.
 
 /// What a widget shows. Plain values, so the live shelf and the settings
 /// preview draw exactly the same thing.
 enum WidgetFace: Equatable {
-    case battery(BatteryState)
-    case volume(level: Double, muted: Bool)
-    case headphones(HeadphoneKind, battery: Double?)
-    case network(NetworkState)
+    /// The Duo glyph proper: the Mac's battery on the ring, the network in the
+    /// middle, the volume on the dots.
+    case duo(battery: BatteryState?, network: NetworkState, volume: Double, muted: Bool)
+    /// A headset: its battery on the ring, the buds in the middle, volume below.
+    case headphones(HeadphoneKind, battery: Double?, volume: Double, muted: Bool)
 }
 
 enum WidgetKind: String, CaseIterable, Hashable, Sendable {
-    case battery, volume, headphones, network
+    case duo, headphones
 }
 
 // MARK: - Bubble
 
-/// One widget: the glyph on a disc of the same glass the Dock is made of.
+/// One widget: the glyph, white on a disc of dark liquid glass.
 struct WidgetBubble: View {
     let face: WidgetFace
     let size: CGFloat
 
     var body: some View {
-        DuoGlyph(face: face)
-            .frame(width: size * 0.68, height: size * 0.68)
+        DuoGlyph(face: face, canvas: size * 0.8)
+            .environment(\.colorScheme, .dark)
             .frame(width: size, height: size)
-            .modifier(GlassDisc())
+            .modifier(DarkGlassDisc())
     }
 }
 
-private struct GlassDisc: ViewModifier {
+private struct DarkGlassDisc: ViewModifier {
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
-            content.glassEffect(.regular, in: Circle())
+            content.glassEffect(.regular.tint(Color.black.opacity(0.62)), in: Circle())
         } else {
             content
+                .background(Circle().fill(Color.black.opacity(0.72)))
                 .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5))
         }
     }
 }
 
 // MARK: - Glyph
 
+private enum Duo {
+    static let canvas: CGFloat = 32
+    static let ringDiameter: CGFloat = 26.5
+    static let lineWidth: CGFloat = ringDiameter * 18 / 230
+    static let pathDiameter: CGFloat = ringDiameter - lineWidth
+    static let ringYOffset: CGFloat = -0.8
+    static let centerYOffset: CGFloat = -1.25
+    static let symbolSize: CGFloat = 12.4
+    static let boltSize: CGFloat = ringDiameter * (50 / 1.16) / 230
+    static let boltPoint = CGPoint(x: -ringDiameter * 3 / 230,
+                                   y: -(pathDiameter / 2 - ringDiameter * 24 / 230) + ringYOffset)
+    static let wifiSize = CGSize(width: ringDiameter * 100 / 230, height: ringDiameter * 73 / 230)
+    static let wifiYOffset: CGFloat = ringYOffset + ringDiameter * (-15 / 230) - centerYOffset
+    static let dotDiameter: CGFloat = ringDiameter * 21.5 / 230
+    static let dotRowY: CGFloat = 7.495652174
+    static let dotX: [CGFloat] = [-55.25, -19.5, 19.5, 55.25].map { ringDiameter * $0 / 230 }
+    static let dotY: [CGFloat] = [-6.5, 6.5, 6.5, -6.5].map { ringDiameter * $0 / 230 }
+    static let inactive = 0.28
+    static let chargingTrack = 0.24
+}
+
 struct DuoGlyph: View {
     let face: WidgetFace
+    /// Side of the square the 32 pt canvas is scaled into.
+    let canvas: CGFloat
+
+    private var u: CGFloat { canvas / Duo.canvas }
 
     var body: some View {
-        GeometryReader { geometry in
-            let d = min(geometry.size.width, geometry.size.height)
-            ZStack {
-                DuoRing(progress: ringProgress, color: ringColor, lineWidth: d * 0.085, showsFill: showsFill)
-                center(d)
-                    .id(centerKey)
-                    .transition(.opacity.combined(with: .scale(scale: 0.86)))
-                gapContent(d)
-            }
-            .frame(width: d, height: d)
-            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        ZStack {
+            ring
+            bolt
+            center
+                .id(centerKey)
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                .offset(y: Duo.centerYOffset * u)
+            dots
         }
-        .animation(.spring(response: 0.42, dampingFraction: 0.86), value: face)
+        .frame(width: canvas, height: canvas)
+        .animation(.easeInOut(duration: 0.25), value: centerKey)
+        .animation(.easeOut(duration: 0.18), value: face)
     }
 
     // MARK: ring
 
+    private var ring: some View {
+        let style = StrokeStyle(lineWidth: Duo.lineWidth * u, lineCap: .round, lineJoin: .round)
+        return ZStack {
+            DuoArc(progress: 1)
+                .stroke(ringColor, style: style)
+                .opacity(trackOpacity)
+            DuoArc(progress: ringProgress)
+                .stroke(ringColor, style: style)
+                .opacity(fillOpacity)
+        }
+        .frame(width: Duo.pathDiameter * u, height: Duo.pathDiameter * u)
+        .offset(y: Duo.ringYOffset * u)
+        .animation(.easeOut(duration: 0.32), value: ringColorKey)
+    }
+
     private var ringProgress: Double {
         switch face {
-        case .battery(let battery): return battery.level
-        case .volume(let level, let muted): return muted ? 0 : level
-        case .headphones(_, let battery): return battery ?? 1
-        case .network(let state):
-            switch state {
-            case .wifi(let bars): return Double(bars) / 3
-            case .ethernet, .other: return 1
-            case .offline: return 0
-            }
+        case .duo(let battery, _, _, _): return battery?.level ?? 1
+        case .headphones(_, let battery, _, _): return battery ?? 1
         }
     }
 
-    private var showsFill: Bool {
-        if case .headphones(_, nil) = face { return false }
-        return true
+    private var charging: Bool {
+        if case .duo(let battery?, _, _, _) = face { return battery.isCharging }
+        return false
+    }
+
+    /// The unfilled part only ever shows while charging — and, faintly, for a
+    /// headset that keeps its battery to itself.
+    private var trackOpacity: Double {
+        switch face {
+        case .duo: return charging ? Duo.chargingTrack : 0
+        case .headphones(_, let battery, _, _): return battery == nil ? Duo.inactive : 0
+        }
+    }
+
+    private var fillOpacity: Double {
+        switch face {
+        case .duo(let battery, _, _, _): return battery == nil ? Duo.inactive : 1
+        case .headphones(_, let battery, _, _): return battery == nil ? 0 : 1
+        }
+    }
+
+    private var ringColorKey: Int {
+        guard case .duo(let battery?, _, _, _) = face else { return 0 }
+        if battery.isCharging { return 1 }
+        if battery.isLowPower { return 2 }
+        if battery.isLow { return 3 }
+        return 0
     }
 
     private var ringColor: Color {
-        switch face {
-        case .battery(let battery):
-            if battery.isCharging || (battery.isPluggedIn && battery.level >= 0.99) { return Color(nsColor: .systemGreen) }
-            if battery.isLowPower { return Color(nsColor: .systemYellow) }
-            if battery.isLow { return Color(nsColor: .systemRed) }
-            return .primary
-        case .network(.offline):
-            return Color(nsColor: .systemOrange)
-        default:
-            return .primary
+        switch ringColorKey {
+        case 1: return Color(nsColor: .systemGreen)
+        case 2: return Color(nsColor: .systemYellow)
+        case 3: return Color(nsColor: .systemRed)
+        default: return .primary
         }
+    }
+
+    // MARK: bolt, in the top of the ring
+
+    private var bolt: some View {
+        Image(systemName: "bolt.fill")
+            .font(.system(size: Duo.boltSize * u, weight: .bold))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(.primary)
+            .offset(x: Duo.boltPoint.x * u, y: Duo.boltPoint.y * u)
+            .scaleEffect(charging ? 1 : 0.01, anchor: .center)
+            .opacity(charging ? 1 : 0)
+            .animation(.timingCurve(0.33, 1, 0.68, 1, duration: 0.43), value: charging)
     }
 
     // MARK: centre
 
     private var centerKey: String {
         switch face {
-        case .battery: return "battery"
-        case .volume(_, let muted): return muted ? "muted" : "volume"
-        case .headphones(let kind, _): return kind.symbol
-        case .network(let state):
-            switch state {
+        case .duo(_, let network, _, _):
+            switch network {
             case .wifi: return "wifi"
             case .ethernet: return "ethernet"
             case .other: return "other"
             case .offline: return "offline"
             }
+        case .headphones(let kind, _, _, _): return kind.symbol
         }
     }
 
     @ViewBuilder
-    private func center(_ d: CGFloat) -> some View {
+    private var center: some View {
         switch face {
-        case .battery(let battery):
-            Text("\(Int((battery.level * 100).rounded()))")
-                .font(.system(size: d * 0.3, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .foregroundStyle(.primary)
-                .offset(y: -d * 0.03)
-        case .volume(_, let muted):
-            symbol(muted ? "speaker.slash.fill" : "speaker.wave.2.fill", d * 0.27)
-                .offset(y: -d * 0.05)
-        case .headphones(let kind, _):
-            symbol(kind.symbol, d * 0.33)
-                .offset(y: -d * 0.03)
-        case .network(let state):
-            switch state {
+        case .duo(_, let network, _, _):
+            switch network {
             case .wifi(let bars):
-                DuoWiFiGlyph(bars: bars)
-                    .frame(width: d * 0.44, height: d * 0.32)
-                    .offset(y: -d * 0.04)
+                DuoWiFiGlyph(bars: bars, lineWidth: Duo.ringDiameter * 14.5 / 230 * u)
+                    .frame(width: Duo.wifiSize.width * u, height: Duo.wifiSize.height * u)
+                    .offset(y: Duo.wifiYOffset * u)
             case .ethernet:
-                symbol("cable.connector.horizontal", d * 0.28)
+                symbol("cable.connector.horizontal", scale: 0.92)
             case .other:
-                symbol("network", d * 0.3)
+                symbol("ellipsis.circle", scale: 0.92)
             case .offline:
-                symbol("wifi.slash", d * 0.3)
-                    .foregroundStyle(Color(nsColor: .systemOrange))
+                symbol("network.slash", scale: 1)
             }
+        case .headphones(let kind, _, _, _):
+            symbol(kind.symbol, scale: 0.92)
+                .foregroundStyle(Color.accentColor.opacity(0.86))
         }
     }
 
-    private func symbol(_ name: String, _ size: CGFloat) -> some View {
+    private func symbol(_ name: String, scale: CGFloat) -> some View {
         Image(systemName: name)
-            .font(.system(size: size, weight: .semibold))
+            .font(.system(size: Duo.symbolSize * scale * u, weight: .semibold))
             .symbolRenderingMode(.monochrome)
             .foregroundStyle(.primary)
     }
 
-    // MARK: the gap at the bottom of the ring
+    // MARK: volume dots, in the gap
 
-    @ViewBuilder
-    private func gapContent(_ d: CGFloat) -> some View {
+    private var activeDots: Int {
+        let (volume, muted): (Double, Bool)
         switch face {
-        case .battery(let battery):
-            Image(systemName: "bolt.fill")
-                .font(.system(size: d * 0.17, weight: .bold))
-                .foregroundStyle(Color(nsColor: .systemGreen))
-                .scaleEffect(battery.isCharging ? 1 : 0.3)
-                .opacity(battery.isCharging ? 1 : 0)
-                .offset(y: d * 0.33)
-                .animation(.easeOut(duration: 0.43), value: battery.isCharging)
-        case .volume(let level, let muted):
-            DuoDots(active: muted ? 0 : Int((level * 4).rounded(.up)), d: d)
-        case .headphones(_, let battery):
-            if let battery {
-                Text("\(Int((battery * 100).rounded()))")
-                    .font(.system(size: d * 0.13, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                    .offset(y: d * 0.34)
-            }
-        case .network:
-            EmptyView()
+        case .duo(_, _, let v, let m): (volume, muted) = (v, m)
+        case .headphones(_, _, let v, let m): (volume, muted) = (v, m)
         }
+        guard !muted, volume > 0.001 else { return 0 }
+        return min(4, max(1, Int((volume * 4).rounded(.up))))
+    }
+
+    private var dots: some View {
+        ZStack {
+            ForEach(0..<4, id: \.self) { index in
+                Circle()
+                    .fill(.primary)
+                    .frame(width: Duo.dotDiameter * u, height: Duo.dotDiameter * u)
+                    .opacity(index < activeDots ? 1 : 0.3)
+                    .offset(x: Duo.dotX[index] * u, y: (Duo.dotRowY + Duo.dotY[index]) * u)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: activeDots)
     }
 }
 
-// MARK: - Ring
+// MARK: - Ring shape
 
 /// 240° of arc, open at the bottom; the fill runs from the lower left, over the
 /// top, towards the lower right.
-struct DuoRing: View {
-    var progress: Double
-    var color: Color
-    var lineWidth: CGFloat
-    var showsFill = true
-
-    var body: some View {
-        ZStack {
-            DuoArc(progress: 1)
-                .stroke(color.opacity(0.22), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-            if showsFill {
-                DuoArc(progress: progress)
-                    .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-            }
-        }
-        .padding(lineWidth / 2)
-    }
-}
-
 struct DuoArc: Shape {
     var progress: Double
 
@@ -220,63 +251,39 @@ struct DuoArc: Shape {
     func path(in rect: CGRect) -> Path {
         let clamped = min(max(progress, 0), 1)
         guard clamped > 0.001 else { return Path() }
+        let start = 90 + 120.2 / 2
+        let end = 450 - 120.2 / 2
         var path = Path()
         path.addArc(center: CGPoint(x: rect.midX, y: rect.midY),
                     radius: min(rect.width, rect.height) / 2,
-                    startAngle: .degrees(150),
-                    endAngle: .degrees(150 + 240 * clamped),
+                    startAngle: .degrees(start),
+                    endAngle: .degrees(start + (end - start) * clamped),
                     clockwise: false)
         return path
     }
 }
 
-// MARK: - Volume dots
+// MARK: - Wi-Fi
 
-/// Four dots in a slight smile across the ring's gap; lit ones are the volume.
-struct DuoDots: View {
-    let active: Int
-    let d: CGFloat
-
-    private static let xs: [CGFloat] = [-55.25, -19.5, 19.5, 55.25].map { $0 / 230 }
-    private static let ys: [CGFloat] = [-6.5, 6.5, 6.5, -6.5].map { $0 / 230 }
+/// Core, middle and outer band, lit from the core out by signal strength.
+struct DuoWiFiGlyph: View {
+    let bars: Int
+    let lineWidth: CGFloat
 
     var body: some View {
         ZStack {
-            ForEach(0..<4, id: \.self) { index in
-                Circle()
-                    .fill(.primary)
-                    .frame(width: d * 0.094, height: d * 0.094)
-                    .opacity(index < active ? 1 : 0.3)
-                    .offset(x: d * Self.xs[index], y: d * (0.3 + Self.ys[index]))
-            }
+            WiFiBand(kind: .outer)
+                .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+                .opacity(bars >= 3 ? 1 : 0.28)
+            WiFiBand(kind: .middle)
+                .stroke(style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+                .opacity(bars >= 2 ? 1 : 0.28)
+            WiFiCore()
+                .fill()
+                .opacity(bars >= 1 ? 1 : 0.28)
         }
-        .animation(.easeOut(duration: 0.18), value: active)
-    }
-}
-
-// MARK: - Wi-Fi
-
-/// Three bands — core, middle, outer — lit from the core out by signal.
-struct DuoWiFiGlyph: View {
-    let bars: Int
-
-    var body: some View {
-        GeometryReader { geometry in
-            let line = geometry.size.width * 0.145
-            ZStack {
-                WiFiBand(kind: .outer)
-                    .stroke(style: StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round))
-                    .opacity(bars >= 3 ? 1 : 0.3)
-                WiFiBand(kind: .middle)
-                    .stroke(style: StrokeStyle(lineWidth: line, lineCap: .round, lineJoin: .round))
-                    .opacity(bars >= 2 ? 1 : 0.3)
-                WiFiCore()
-                    .fill()
-                    .opacity(bars >= 1 ? 1 : 0.3)
-            }
-            .foregroundStyle(.primary)
-        }
-        .animation(.easeOut(duration: 0.2), value: bars)
+        .foregroundStyle(.primary)
+        .animation(.easeOut(duration: 0.18), value: bars)
     }
 }
 

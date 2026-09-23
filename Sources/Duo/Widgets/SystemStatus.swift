@@ -20,17 +20,6 @@ enum NetworkState: Equatable {
     case ethernet
     case other
     case offline
-
-    /// The kind of link, ignoring signal strength — a change here is news, a
-    /// Wi-Fi bar coming and going is not.
-    var kind: Int {
-        switch self {
-        case .wifi: return 0
-        case .ethernet: return 1
-        case .other: return 2
-        case .offline: return 3
-        }
-    }
 }
 
 enum HeadphoneKind: Equatable {
@@ -69,15 +58,10 @@ final class SystemStatus: ObservableObject {
     @Published private(set) var audio = AudioState(volume: 0.5, isMuted: false, headphones: nil, outputName: "")
     @Published private(set) var headphoneBattery: Double?
 
-    /// Moments worth surfacing a widget for, as opposed to steady state.
-    let volumeChanged = PassthroughSubject<Void, Never>()
-    let networkChanged = PassthroughSubject<Void, Never>()
-
     private let batteryMonitor = BatteryMonitor()
     private let networkMonitor = NetworkMonitor()
     private let audioMonitor = AudioMonitor()
     private var headphoneTimer: Timer?
-    private var hasNetwork = false
     private var started = false
 
     func start() {
@@ -92,11 +76,8 @@ final class SystemStatus: ObservableObject {
         }
 
         networkMonitor.onChange = { [weak self] state in
-            guard let self, state != self.network || !self.hasNetwork else { return }
-            let newsworthy = self.hasNetwork && state.kind != self.network.kind
-            self.hasNetwork = true
+            guard let self, state != self.network else { return }
             self.network = state
-            if newsworthy { self.networkChanged.send() }
         }
         networkMonitor.start()
 
@@ -106,11 +87,9 @@ final class SystemStatus: ObservableObject {
 
     private func apply(_ state: AudioState) {
         let old = audio
+        guard state != old else { return }
         audio = state
         let sameDevice = state.outputName == old.outputName && !old.outputName.isEmpty
-        if sameDevice, abs(state.volume - old.volume) > 0.001 || state.isMuted != old.isMuted {
-            volumeChanged.send()
-        }
         if state.headphones == nil {
             headphoneBattery = nil
             headphoneTimer?.invalidate()

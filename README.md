@@ -79,22 +79,20 @@ follows the hinge one degree at a time, read straight from the Mac's own sensor.
 
 ## Widgets
 
-Switch on **Settings → Widgets** and the system's own status grows out of the Dock, the
-way it does on the iPhone Duo: each widget buds from the Dock — or from the widget next
-to it — on the same liquid glass, pinches off, and settles alongside. They sit either
-side of a Dock at the bottom and above and below one on its side, and they are exactly as
+Switch on **Settings → Widgets** and the iPhone Duo's status glyph grows out of the Dock:
+it buds from the Dock's edge on dark liquid glass, pinches off, and settles alongside,
+and a headset gets a glyph of its own that buds out the same way. They sit either side
+of a Dock at the bottom and above and below one on its side, and they are exactly as
 thick as the Dock, so a bigger Dock means bigger widgets.
 
 | Widget | When it shows |
 |---|---|
-| **Battery** | Always. Green while charging, yellow in Low Power Mode, red when low. |
-| **Headphones** | While a Bluetooth headset is the output, with its battery when macOS reports it. |
-| **Network** | While the connection is down, and for a moment after it changes. |
-| **Volume** | For a moment after the volume moves, with the four dots in the ring's gap. |
+| **Duo** | Always. The Mac's battery on the ring — green while charging, yellow in Low Power Mode, red when low — the network in the middle, the volume on the four dots. |
+| **Headphones** | While a Bluetooth headset is the output: its battery on the ring, the buds in blue, the volume below. |
 
-The glyphs speak [DuoBar](https://github.com/Mikeli7666/DuoBar)'s visual language — a ring
-open at the bottom, three-band Wi-Fi, four volume dots — split out of one menu bar glyph
-into widgets of their own. Allow Accessibility and they line up with the Dock to the
+The glyph is [DuoBar](https://github.com/Mikeli7666/DuoBar)'s, drawn from its own
+measurements — the ring open at the bottom, three-band Wi-Fi, four volume dots, the bolt
+in the top of the ring. Allow Accessibility and the widgets line up with the Dock to the
 point; without it Duo works the Dock's length out from its icons.
 
 <br>
@@ -105,7 +103,7 @@ point; without it Duo works the Dock's length out from its icons.
 |---|---|---|
 | **Starts below** | 80° | Above this hinge angle nothing happens, however you move the lid. Below it, the glass tilts with the hinge. |
 | **Follow every movement** | off | Also measures the fold from wherever the lid last rested: bring it down ten degrees and the desktop folds by ten, then unfolds once the lid stops. Below the threshold the full fold still plays, however slowly you close. |
-| **System widgets** | off | Battery, headphones, network and volume beside the Dock — see [Widgets](#widgets). |
+| **System widgets** | off | The Duo glyph beside the Dock, and a headset's while one is playing — see [Widgets](#widgets). |
 | **Perspective** | 100% | Where you sit. 100% puts your eye half a metre from the screen; less reads as sitting farther back. |
 | **Variable blur** | 65% | How quickly frost grows with the gap. |
 | **Shadow** | 35% | How quickly light is lost. |
@@ -146,7 +144,7 @@ xcode-select --install   # if `swift build` isn't there yet
 | [`Sources/Duo/OverlayController.swift`](Sources/Duo/OverlayController.swift) | The click-through window it all lands in |
 | [`Sources/Duo/BendEngine.swift`](Sources/Duo/BendEngine.swift) | Sensor, capture and overlay, tied together |
 | [`Sources/Duo/Widgets/SystemStatus.swift`](Sources/Duo/Widgets/SystemStatus.swift) | Battery, network, sound and headset battery, from public APIs |
-| [`Sources/Duo/Widgets/DuoGlyphs.swift`](Sources/Duo/Widgets/DuoGlyphs.swift) | The widget glyphs: ring, Wi-Fi bands, volume dots, bolt |
+| [`Sources/Duo/Widgets/DuoGlyphs.swift`](Sources/Duo/Widgets/DuoGlyphs.swift) | The Duo glyph: ring, Wi-Fi bands, volume dots, bolt |
 | [`Sources/Duo/Widgets/WidgetShelf.swift`](Sources/Duo/Widgets/WidgetShelf.swift) | What shows when, where it goes, how it buds |
 | [`Sources/Duo/Widgets/DockGeometry.swift`](Sources/Duo/Widgets/DockGeometry.swift) | Where the Dock is and how big |
 | [`Tools/make-readme-art.swift`](Tools/make-readme-art.swift) | Renders every picture in this README |

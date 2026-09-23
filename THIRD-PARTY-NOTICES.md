@@ -34,11 +34,11 @@ SOFTWARE.
 
 ## DuoBar
 
-The widget glyphs in `Sources/Duo/Widgets/DuoGlyphs.swift` follow
-[DuoBar](https://github.com/Mikeli7666/DuoBar)'s visual language: the ring open at the
-bottom, the three-band Wi-Fi mark, whose band curves are taken from it, and the four
-volume dots with their spacing. Duo splits that single menu bar glyph into separate
-widgets beside the Dock.
+The glyph in `Sources/Duo/Widgets/DuoGlyphs.swift` is
+[DuoBar](https://github.com/Mikeli7666/DuoBar)'s, redrawn from its measurements: the ring
+open at the bottom with its stroke and offsets, the three-band Wi-Fi mark and its curves,
+the bolt and where it sits, the four volume dots and their spacing, the centre symbols
+and the headset colour. Duo shows it beside the Dock rather than in the menu bar.
 
 ```
 MIT License
