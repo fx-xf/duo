@@ -3,12 +3,14 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var engine: BendEngine!
+    private var shelf: WidgetShelf!
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
     private var escMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         engine = BendEngine()
+        shelf = WidgetShelf()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = NSImage(systemSymbolName: "macbook", accessibilityDescription: "Duo")
@@ -115,7 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.title = "Duo"
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: SettingsView(engine: engine))
+        window.contentView = NSHostingView(rootView: SettingsView(engine: engine, shelf: shelf))
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

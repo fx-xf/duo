@@ -2,13 +2,14 @@ import SwiftUI
 import ServiceManagement
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general, appearance, about
+    case general, appearance, widgets, about
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .general: return "General"
         case .appearance: return "Appearance"
+        case .widgets: return "Widgets"
         case .about: return "About"
         }
     }
@@ -17,6 +18,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general: return "gearshape"
         case .appearance: return "paintbrush"
+        case .widgets: return "circle.grid.2x1"
         case .about: return "info.circle"
         }
     }
@@ -25,13 +27,17 @@ enum SettingsPane: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @ObservedObject var prefs = Preferences.shared
     @ObservedObject var engine: BendEngine
+    @ObservedObject var shelf: WidgetShelf
     @State private var selection: SettingsPane = .appearance
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 row(.general)
-                Section("Settings") { row(.appearance) }
+                Section("Settings") {
+                    row(.appearance)
+                    row(.widgets)
+                }
                 Section("Duo") { row(.about) }
             }
             .listStyle(.sidebar)
@@ -41,6 +47,7 @@ struct SettingsView: View {
                 switch selection {
                 case .general: GeneralPane(prefs: prefs, engine: engine)
                 case .appearance: AppearancePane(prefs: prefs, engine: engine)
+                case .widgets: WidgetsPane(prefs: prefs, shelf: shelf)
                 case .about: AboutPane(prefs: prefs)
                 }
             }
@@ -117,7 +124,7 @@ struct AppearancePane: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Toggle("Follow every movement", isOn: $prefs.dynamicFold)
                             .toggleStyle(.switch)
-                        Text("Folds by however far you have closed the lid from where it last rested, and hands the desktop back the moment it stops — at any angle. The threshold below is ignored while this is on.")
+                        Text("Folds by however far you have closed the lid from where it last rested, and hands the desktop back when it stops. Below the threshold the full fold still plays, however slowly you close.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         Divider()

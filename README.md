@@ -77,12 +77,35 @@ follows the hinge one degree at a time, read straight from the Mac's own sensor.
 
 <br>
 
+## Widgets
+
+Switch on **Settings → Widgets** and the system's own status grows out of the Dock, the
+way it does on the iPhone Duo: each widget buds from the Dock — or from the widget next
+to it — on the same liquid glass, pinches off, and settles alongside. They sit either
+side of a Dock at the bottom and above and below one on its side, and they are exactly as
+thick as the Dock, so a bigger Dock means bigger widgets.
+
+| Widget | When it shows |
+|---|---|
+| **Battery** | Always. Green while charging, yellow in Low Power Mode, red when low. |
+| **Headphones** | While a Bluetooth headset is the output, with its battery when macOS reports it. |
+| **Network** | While the connection is down, and for a moment after it changes. |
+| **Volume** | For a moment after the volume moves, with the four dots in the ring's gap. |
+
+The glyphs speak [DuoBar](https://github.com/Mikeli7666/DuoBar)'s visual language — a ring
+open at the bottom, three-band Wi-Fi, four volume dots — split out of one menu bar glyph
+into widgets of their own. Allow Accessibility and they line up with the Dock to the
+point; without it Duo works the Dock's length out from its icons.
+
+<br>
+
 ## Settings
 
 | Setting | Default | What it does |
 |---|---|---|
 | **Starts below** | 80° | Above this hinge angle nothing happens, however you move the lid. Below it, the glass tilts with the hinge. |
-| **Follow every movement** | off | Measures the fold from wherever the lid last rested: bring it down ten degrees and the desktop folds by ten. Stop anywhere and it unfolds again — at any angle, right up to shut. The threshold above is ignored while this is on. |
+| **Follow every movement** | off | Also measures the fold from wherever the lid last rested: bring it down ten degrees and the desktop folds by ten, then unfolds once the lid stops. Below the threshold the full fold still plays, however slowly you close. |
+| **System widgets** | off | Battery, headphones, network and volume beside the Dock — see [Widgets](#widgets). |
 | **Perspective** | 100% | Where you sit. 100% puts your eye half a metre from the screen; less reads as sitting farther back. |
 | **Variable blur** | 65% | How quickly frost grows with the gap. |
 | **Shadow** | 35% | How quickly light is lost. |
@@ -100,9 +123,10 @@ cd duo
 ./build.sh
 ```
 
-That builds `Duo.app` and installs it into `/Applications`. All it needs is the Command
-Line Tools — no Xcode, because the Metal shader is compiled at launch rather than ahead
-of time.
+That builds `Duo.app` and installs it into `/Applications`. The Metal shader is compiled
+at launch, so no Metal toolchain is needed. On macOS 14–26 the Command Line Tools are
+enough; on macOS 27 install Xcode as well — the Command Line Tools there ship an SDK
+whose SwiftUI needs a macro plugin they leave out, and `build.sh` picks Xcode up by itself.
 
 ```bash
 xcode-select --install   # if `swift build` isn't there yet
@@ -121,6 +145,10 @@ xcode-select --install   # if `swift build` isn't there yet
 | [`Sources/Duo/BendRenderer.swift`](Sources/Duo/BendRenderer.swift) | Pipeline, mip chain, uniforms |
 | [`Sources/Duo/OverlayController.swift`](Sources/Duo/OverlayController.swift) | The click-through window it all lands in |
 | [`Sources/Duo/BendEngine.swift`](Sources/Duo/BendEngine.swift) | Sensor, capture and overlay, tied together |
+| [`Sources/Duo/Widgets/SystemStatus.swift`](Sources/Duo/Widgets/SystemStatus.swift) | Battery, network, sound and headset battery, from public APIs |
+| [`Sources/Duo/Widgets/DuoGlyphs.swift`](Sources/Duo/Widgets/DuoGlyphs.swift) | The widget glyphs: ring, Wi-Fi bands, volume dots, bolt |
+| [`Sources/Duo/Widgets/WidgetShelf.swift`](Sources/Duo/Widgets/WidgetShelf.swift) | What shows when, where it goes, how it buds |
+| [`Sources/Duo/Widgets/DockGeometry.swift`](Sources/Duo/Widgets/DockGeometry.swift) | Where the Dock is and how big |
 | [`Tools/make-readme-art.swift`](Tools/make-readme-art.swift) | Renders every picture in this README |
 
 <br>
@@ -129,7 +157,8 @@ xcode-select --install   # if `swift build` isn't there yet
 
 The frosted-glass fold comes from [**DuoLikeAnimation**](https://github.com/elijah-semyonov/DuoLikeAnimation)
 by Elijah Semyonov (MIT) — a phone tilting in the hand, here turned on its side for a
-laptop lid on its hinge. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+laptop lid on its hinge. The widget glyphs follow [**DuoBar**](https://github.com/Mikeli7666/DuoBar)
+by Mike Li (MIT). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 <br>
 

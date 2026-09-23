@@ -39,7 +39,10 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
     /// the app would sit on a start that never returns and never capture again.
     private static let startTimeout: CFTimeInterval = 8
 
-    func start(displayID: CGDirectDisplayID, pixelSize: CGSize, fps: Int) {
+    /// `hiddenWindows` are left out of the picture — the overlay itself. Duo's
+    /// other windows, the widgets beside the Dock among them, are part of the
+    /// desktop and fold along with it.
+    func start(displayID: CGDirectDisplayID, pixelSize: CGSize, fps: Int, hiding hiddenWindows: [CGWindowID] = []) {
         let now = CACurrentMediaTime()
         if starting {
             guard now - since > Self.startTimeout else { return }
@@ -62,10 +65,8 @@ final class DesktopCapture: NSObject, SCStreamOutput, SCStreamDelegate {
                     throw CocoaError(.featureUnsupported)
                 }
 
-                let ownApp = content.applications.first { $0.bundleIdentifier == Bundle.main.bundleIdentifier }
-                let filter = SCContentFilter(display: display,
-                                             excludingApplications: ownApp.map { [$0] } ?? [],
-                                             exceptingWindows: [])
+                let hidden = content.windows.filter { hiddenWindows.contains($0.windowID) }
+                let filter = SCContentFilter(display: display, excludingWindows: hidden)
 
                 let configuration = SCStreamConfiguration()
                 configuration.width = Int(pixelSize.width)

@@ -78,7 +78,7 @@ final class BendEngine: ObservableObject {
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.displayAsleep = true
-                Log.engine.info("display asleep at \(Int(self.lastReading), privacy: .public)°")
+                Log.engine.notice("display asleep at \(Int(self.lastReading), privacy: .public)°")
             }
             .store(in: &cancellables)
         workspace.publisher(for: NSWorkspace.screensDidWakeNotification)
@@ -86,7 +86,7 @@ final class BendEngine: ObservableObject {
                 guard let self else { return }
                 self.displayAsleep = false
                 self.capture.retrySoon()
-                Log.engine.info("display awake at \(Int(self.lastReading), privacy: .public)°")
+                Log.engine.notice("display awake at \(Int(self.lastReading), privacy: .public)°")
             }
             .store(in: &cancellables)
         workspace.publisher(for: NSWorkspace.didWakeNotification)
@@ -181,7 +181,7 @@ final class BendEngine: ObservableObject {
         // Keep the stream warm: starting one takes longer than a lid takes to
         // close, and on a still desktop it delivers next to nothing anyway.
         if !capture.isRunning, !displayAsleep {
-            capture.start(displayID: overlay.displayID, pixelSize: overlay.pixelSize, fps: 60)
+            capture.start(displayID: overlay.displayID, pixelSize: overlay.pixelSize, fps: 60, hiding: [overlay.windowID])
         } else {
             capture.checkHealth()
         }
@@ -209,13 +209,13 @@ final class BendEngine: ObservableObject {
         if active != bendActive {
             bendActive = active
             if active {
-                Log.engine.info("""
+                Log.engine.notice("""
                     fold in at \(Int(target), privacy: .public)°, starts below \(Int(self.model.startAngle), privacy: .public)°, \
                     frame ready \(overlay.renderer.hasFrame, privacy: .public), \
                     capturing \(self.capture.isRunning, privacy: .public)
                     """)
             } else {
-                Log.engine.info("cleared at \(Int(target), privacy: .public)°")
+                Log.engine.notice("cleared at \(Int(target), privacy: .public)°")
                 overlay.hide()
                 if reachedFullBend {
                     prefs.bendCount += 1

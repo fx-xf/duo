@@ -62,6 +62,8 @@ final class OverlayController {
         window.screen?.displayID ?? CGMainDisplayID()
     }
 
+    var windowID: CGWindowID { CGWindowID(window.windowNumber) }
+
     /// Draws first and only then orders the window in, inside the same
     /// transaction, so its first composited frame is already the right one.
     func render(_ params: BendParams) {
