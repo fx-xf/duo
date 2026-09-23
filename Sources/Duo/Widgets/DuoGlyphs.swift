@@ -29,47 +29,40 @@ struct WidgetBubble: View {
     var body: some View {
         DuoGlyph(face: face, canvas: size * 0.8)
             .frame(width: size, height: size)
-            .modifier(SystemGlass(shape: Circle()))
+            .modifier(SystemGlass(cornerRadius: size / 2))
     }
 }
 
-/// The glass the Dock is made of. The Dock applies the tint set in System
-/// Settings → Appearance; standard app glass does not, so it is applied here
-/// by hand, on top of the same system glass, and follows the slider live.
-struct SystemGlass<S: Shape>: ViewModifier {
-    let shape: S
-    @ObservedObject private var tint = GlassTint.shared
-    @Environment(\.colorScheme) private var scheme
+/// The Dock's glass. The Liquid Glass tint from System Settings → Appearance
+/// (NSGlassTintAmount) is read by AppKit and nothing else — SwiftUI's glass
+/// never sees it — so the disc is AppKit's own glass view, left untinted, and
+/// gets exactly the treatment the Dock gets, slider and all.
+struct SystemGlass: ViewModifier {
+    let cornerRadius: CGFloat
 
     func body(content: Content) -> some View {
-        let wash = shape.fill((scheme == .dark ? Color.black : Color.white).opacity(tint.opacity))
         if #available(macOS 26.0, *) {
-            content.background(wash).glassEffect(.regular, in: shape)
+            content.background(AppKitGlass(cornerRadius: cornerRadius))
         } else {
-            content.background(wash).background(.ultraThinMaterial, in: shape)
+            content.background(.ultraThinMaterial,
+                               in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         }
     }
 }
 
-/// The Liquid Glass tint chosen in System Settings, from 0 (clear) upward.
-final class GlassTint: ObservableObject {
-    static let shared = GlassTint()
+@available(macOS 26.0, *)
+private struct AppKitGlass: NSViewRepresentable {
+    let cornerRadius: CGFloat
 
-    @Published private(set) var amount: Double = 0
-    private var timer: Timer?
-
-    /// Calibrated against the Dock itself: at a setting of 0.28 it takes a
-    /// backdrop of 203 down to 80, where untinted glass only reaches 170.
-    var opacity: Double { min(0.85, amount * 1.92) }
-
-    private init() {
-        read()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in self?.read() }
+    func makeNSView(context: Context) -> NSGlassEffectView {
+        let view = NSGlassEffectView()
+        view.style = .regular
+        view.cornerRadius = cornerRadius
+        return view
     }
 
-    private func read() {
-        let value = UserDefaults.standard.double(forKey: "NSGlassTintAmount")
-        if value != amount { amount = value }
+    func updateNSView(_ view: NSGlassEffectView, context: Context) {
+        if view.cornerRadius != cornerRadius { view.cornerRadius = cornerRadius }
     }
 }
 

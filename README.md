@@ -80,8 +80,8 @@ follows the hinge one degree at a time, read straight from the Mac's own sensor.
 ## Widgets
 
 Switch on **Settings → Widgets** and the iPhone Duo's status glyph grows out of the Dock:
-it buds from the Dock's edge on the Dock's own liquid glass — Clear or Tinted, whichever
-System Settings says — pinches off, and settles alongside,
+it buds from the Dock's edge and settles alongside on the Dock's own liquid glass, tinted
+exactly as far as the slider in System Settings → Appearance says,
 and a headset gets a glyph of its own that buds out the same way. They sit either side
 of a Dock at the bottom and above and below one on its side, and they are exactly as
 thick as the Dock, so a bigger Dock means bigger widgets.

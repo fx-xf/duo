@@ -35,7 +35,7 @@ struct WidgetStack: View {
     }
 
     var body: some View {
-        glass {
+        Group {
             if horizontal {
                 HStack(spacing: gap) { bubbles }
             } else {
@@ -52,17 +52,6 @@ struct WidgetStack: View {
                 .transition(.bud(from: towardDock, distance: size + gap))
         }
     }
-
-    /// In one glass container, discs that come close melt into each other — so
-    /// a widget pulling away from its neighbour pinches off like a drop.
-    @ViewBuilder
-    private func glass<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        if #available(macOS 26.0, *) {
-            GlassEffectContainer(spacing: gap * 1.6) { content() }
-        } else {
-            content()
-        }
-    }
 }
 
 private struct Bud: ViewModifier {
@@ -73,7 +62,6 @@ private struct Bud: ViewModifier {
         content
             .scaleEffect(settled ? 1 : 0.32)
             .offset(settled ? .zero : offset)
-            .blur(radius: settled ? 0 : 5)
             .opacity(settled ? 1 : 0)
     }
 }

@@ -166,6 +166,6 @@ private struct MiniDock: View {
         }
         .padding(.horizontal, height * 0.16)
         .frame(height: height)
-        .modifier(SystemGlass(shape: RoundedRectangle(cornerRadius: height * 0.38, style: .continuous)))
+        .modifier(SystemGlass(cornerRadius: height * 0.38))
     }
 }
