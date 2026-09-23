@@ -33,19 +33,29 @@ struct WidgetBubble: View {
     }
 }
 
-/// The Dock's glass. The Liquid Glass tint from System Settings → Appearance
-/// (NSGlassTintAmount) is read by AppKit and nothing else — SwiftUI's glass
-/// never sees it — so the disc is AppKit's own glass view, left untinted, and
-/// gets exactly the treatment the Dock gets, slider and all.
+/// The Dock's own surface. Once a frame has been sampled the disc is painted in
+/// the colours the Dock is really drawn in, top to bottom, with the bright rim
+/// its glass has — see `DockTone`. Until then, plain system glass.
 struct SystemGlass: ViewModifier {
     let cornerRadius: CGFloat
+    @ObservedObject private var tone = DockTone.shared
 
     func body(content: Content) -> some View {
-        if #available(macOS 26.0, *) {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .circular)
+        if let top = tone.top, let bottom = tone.bottom {
+            content.background(
+                shape
+                    .fill(LinearGradient(colors: [Color(nsColor: top), Color(nsColor: bottom)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.32), .white.opacity(0.07)],
+                                                               startPoint: .top, endPoint: .bottom),
+                                                lineWidth: 1))
+                    .animation(.easeOut(duration: 0.3), value: top)
+            )
+        } else if #available(macOS 26.0, *) {
             content.background(AppKitGlass(cornerRadius: cornerRadius))
         } else {
-            content.background(.ultraThinMaterial,
-                               in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            content.background(.ultraThinMaterial, in: shape)
         }
     }
 }

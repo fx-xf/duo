@@ -202,6 +202,7 @@ final class WidgetShelf: ObservableObject {
     private func relayout(animated: Bool) {
         guard let screen = NSScreen.builtIn ?? NSScreen.main else { return }
         let layout = DockProbe.measure(on: screen)
+        DockTone.shared.track(dock: layout.frame, on: screen)
         if dockIsExact != layout.exact { dockIsExact = layout.exact }
         guard layout != self.layout else { return }
         let first = self.layout == nil

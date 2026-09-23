@@ -58,6 +58,7 @@ final class BendEngine: ObservableObject {
             let sink = self.frameSink
             self.sinkLock.unlock()
             sink?.submit(frame: buffer)
+            DockTone.shared.sample(buffer)
         }
 
         rebuildOverlay()
