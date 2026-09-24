@@ -58,9 +58,10 @@ private struct Bud: ViewModifier {
     let settled: Bool
     let offset: CGSize
 
+    /// Offset and opacity only: the disc is an AppKit view, and SwiftUI moves
+    /// and fades those faithfully where it cannot be trusted to scale them.
     func body(content: Content) -> some View {
         content
-            .scaleEffect(settled ? 1 : 0.32)
             .offset(settled ? .zero : offset)
             .opacity(settled ? 1 : 0)
     }
@@ -202,7 +203,6 @@ final class WidgetShelf: ObservableObject {
     private func relayout(animated: Bool) {
         guard let screen = NSScreen.builtIn ?? NSScreen.main else { return }
         let layout = DockProbe.measure(on: screen)
-        DockTone.shared.track(dock: layout.frame, on: screen)
         if dockIsExact != layout.exact { dockIsExact = layout.exact }
         guard layout != self.layout else { return }
         let first = self.layout == nil
@@ -262,14 +262,16 @@ fileprivate enum ShelfSide: Hashable {
     case leading, trailing
 }
 
-/// Never takes focus, yet draws as if it had it. Glass in an inactive window is
-/// flattened to a dull grey, and these windows are never active — the Dock's
-/// never looks inactive, so neither may they.
+/// Never takes focus, yet draws as if it had it. Liquid Glass asks the window
+/// these two private questions and, for a window that is never active, lays on
+/// the heavier, greyer inactive look — the Dock never looks inactive, so neither
+/// may these. Unknown selectors are simply never called, so a future macOS that
+/// renames them costs the look, not a crash.
 private final class ShelfWindow: NSWindow {
-    override var isKeyWindow: Bool { true }
-    override var isMainWindow: Bool { true }
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+    @objc func _hasActiveAppearance() -> Bool { true }
+    @objc func _hasActiveAppearanceIgnoringKeyFocus() -> Bool { true }
 }
 
 fileprivate final class ShelfState: ObservableObject {
@@ -303,6 +305,5 @@ private struct ShelfSideView: View {
                     gap: state.gap,
                     towardDock: towardDock)
             .padding(18)
-            .environment(\.controlActiveState, .key)
     }
 }

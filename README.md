@@ -157,7 +157,11 @@ xcode-select --install   # if `swift build` isn't there yet
 The frosted-glass fold comes from [**DuoLikeAnimation**](https://github.com/elijah-semyonov/DuoLikeAnimation)
 by Elijah Semyonov (MIT) — a phone tilting in the hand, here turned on its side for a
 laptop lid on its hinge. The widget glyphs follow [**DuoBar**](https://github.com/Mikeli7666/DuoBar)
-by Mike Li (MIT). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+by Mike Li (MIT). The widgets wear the Dock's own glass thanks to
+[Dockline](https://github.com/HuanCheng65/Dockline) and
+[tungsten-edge](https://github.com/moonbai-studio/tungsten-edge), which pinned down the
+private material variant the Dock uses and measured it against the real thing.
+See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 <br>
 

@@ -156,16 +156,19 @@ private struct MiniDock: View {
 
     var body: some View {
         let icon = height * 0.72
-        HStack(spacing: height * 0.12) {
-            ForEach(0..<Self.icons.count, id: \.self) { index in
-                RoundedRectangle(cornerRadius: icon * 0.24, style: .continuous)
-                    .fill(LinearGradient(colors: [Self.icons[index].0, Self.icons[index].1],
-                                         startPoint: .top, endPoint: .bottom))
-                    .frame(width: icon, height: icon)
+        let spacing = height * 0.12
+        let width = CGFloat(Self.icons.count) * icon + CGFloat(Self.icons.count - 1) * spacing + height * 0.32
+        DockMaterial(cornerRadius: height * 0.38) {
+            HStack(spacing: spacing) {
+                ForEach(0..<Self.icons.count, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: icon * 0.24, style: .continuous)
+                        .fill(LinearGradient(colors: [Self.icons[index].0, Self.icons[index].1],
+                                             startPoint: .top, endPoint: .bottom))
+                        .frame(width: icon, height: icon)
+                }
             }
+            .frame(width: width, height: height)
         }
-        .padding(.horizontal, height * 0.16)
-        .frame(height: height)
-        .modifier(SystemGlass(cornerRadius: height * 0.38))
+        .frame(width: width, height: height)
     }
 }
