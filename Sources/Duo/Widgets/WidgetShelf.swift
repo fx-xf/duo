@@ -58,11 +58,11 @@ private struct Bud: ViewModifier {
     let settled: Bool
     let offset: CGSize
 
-    /// Offset and opacity only: the disc is an AppKit view, and SwiftUI moves
-    /// and fades those faithfully where it cannot be trusted to scale them.
     func body(content: Content) -> some View {
         content
+            .scaleEffect(settled ? 1 : 0.32)
             .offset(settled ? .zero : offset)
+            .blur(radius: settled ? 0 : 5)
             .opacity(settled ? 1 : 0)
     }
 }
@@ -262,16 +262,10 @@ fileprivate enum ShelfSide: Hashable {
     case leading, trailing
 }
 
-/// Never takes focus, yet draws as if it had it. Liquid Glass asks the window
-/// these two private questions and, for a window that is never active, lays on
-/// the heavier, greyer inactive look — the Dock never looks inactive, so neither
-/// may these. Unknown selectors are simply never called, so a future macOS that
-/// renames them costs the look, not a crash.
+/// Shows beside the Dock and never takes focus from anything.
 private final class ShelfWindow: NSWindow {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
-    @objc func _hasActiveAppearance() -> Bool { true }
-    @objc func _hasActiveAppearanceIgnoringKeyFocus() -> Bool { true }
 }
 
 fileprivate final class ShelfState: ObservableObject {

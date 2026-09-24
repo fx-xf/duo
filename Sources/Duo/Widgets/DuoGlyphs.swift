@@ -21,70 +21,17 @@ enum WidgetKind: String, CaseIterable, Hashable, Sendable {
 
 // MARK: - Bubble
 
-/// One widget: the glyph, set in a disc of the Dock's own material.
+/// One widget: the glyph on its own, as DuoBar draws it — white, the size of a
+/// Dock icon, with a soft shadow so it still reads over a light wallpaper.
 struct WidgetBubble: View {
     let face: WidgetFace
     let size: CGFloat
 
     var body: some View {
-        DockMaterial(cornerRadius: size / 2) {
-            DuoGlyph(face: face, canvas: size * 0.8)
-                .frame(width: size, height: size)
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-/// The material the Dock itself is made of: AppKit's glass in its private
-/// Dock variant, 3, left untinted, with the content inside the glass rather
-/// than laid over it. Plain glass (variant 0) lays down a milky fill — darken
-/// 0.80, normal 0.28 — which is the grey disc; variant 3 has no fill at all and
-/// takes the Liquid Glass tint slider the way the Dock does. The variant number
-/// comes from Dockline (HuanCheng65) and tungsten-edge (moonbai-studio), which
-/// both measured it against the real Dock. If a future macOS drops the private
-/// setter the disc simply stays plain glass.
-struct DockMaterial<Content: View>: View {
-    let cornerRadius: CGFloat
-    let content: Content
-
-    init(cornerRadius: CGFloat, @ViewBuilder content: () -> Content) {
-        self.cornerRadius = cornerRadius
-        self.content = content()
-    }
-
-    var body: some View {
-        if #available(macOS 26.0, *) {
-            DockGlassView(cornerRadius: cornerRadius, content: content)
-        } else {
-            content.background(.ultraThinMaterial,
-                               in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        }
-    }
-}
-
-@available(macOS 26.0, *)
-private struct DockGlassView<Content: View>: NSViewRepresentable {
-    let cornerRadius: CGFloat
-    let content: Content
-
-    func makeNSView(context: Context) -> NSGlassEffectView {
-        let glass = NSGlassEffectView()
-        let host = NSHostingView(rootView: content)
-        // The glass sizes its content; a second opinion from the host only
-        // starts constraint loops.
-        host.sizingOptions = []
-        glass.contentView = host
-        glass.tintColor = nil
-        glass.cornerRadius = cornerRadius
-        if glass.responds(to: NSSelectorFromString("set_variant:")) {
-            glass.setValue(3, forKey: "_variant")
-        }
-        return glass
-    }
-
-    func updateNSView(_ glass: NSGlassEffectView, context: Context) {
-        if glass.cornerRadius != cornerRadius { glass.cornerRadius = cornerRadius }
-        (glass.contentView as? NSHostingView<Content>)?.rootView = content
+        DuoGlyph(face: face, canvas: size * 0.95)
+            .environment(\.colorScheme, .dark)
+            .shadow(color: .black.opacity(0.45), radius: size * 0.05, y: size * 0.015)
+            .frame(width: size, height: size)
     }
 }
 

@@ -80,8 +80,8 @@ follows the hinge one degree at a time, read straight from the Mac's own sensor.
 ## Widgets
 
 Switch on **Settings → Widgets** and the iPhone Duo's status glyph grows out of the Dock:
-it buds from the Dock's edge and settles alongside on the Dock's own liquid glass, tinted
-exactly as far as the slider in System Settings → Appearance says,
+it buds from the Dock's edge and settles alongside, on nothing but the wallpaper — white,
+with a soft shadow, the way DuoBar draws it —
 and a headset gets a glyph of its own that buds out the same way. They sit either side
 of a Dock at the bottom and above and below one on its side, and they are exactly as
 thick as the Dock, so a bigger Dock means bigger widgets.
@@ -157,11 +157,7 @@ xcode-select --install   # if `swift build` isn't there yet
 The frosted-glass fold comes from [**DuoLikeAnimation**](https://github.com/elijah-semyonov/DuoLikeAnimation)
 by Elijah Semyonov (MIT) — a phone tilting in the hand, here turned on its side for a
 laptop lid on its hinge. The widget glyphs follow [**DuoBar**](https://github.com/Mikeli7666/DuoBar)
-by Mike Li (MIT). The widgets wear the Dock's own glass thanks to
-[Dockline](https://github.com/HuanCheng65/Dockline) and
-[tungsten-edge](https://github.com/moonbai-studio/tungsten-edge), which pinned down the
-private material variant the Dock uses and measured it against the real thing.
-See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+by Mike Li (MIT). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 <br>
 

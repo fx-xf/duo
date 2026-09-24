@@ -156,19 +156,29 @@ private struct MiniDock: View {
 
     var body: some View {
         let icon = height * 0.72
-        let spacing = height * 0.12
-        let width = CGFloat(Self.icons.count) * icon + CGFloat(Self.icons.count - 1) * spacing + height * 0.32
-        DockMaterial(cornerRadius: height * 0.38) {
-            HStack(spacing: spacing) {
-                ForEach(0..<Self.icons.count, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: icon * 0.24, style: .continuous)
-                        .fill(LinearGradient(colors: [Self.icons[index].0, Self.icons[index].1],
-                                             startPoint: .top, endPoint: .bottom))
-                        .frame(width: icon, height: icon)
-                }
+        HStack(spacing: height * 0.12) {
+            ForEach(0..<Self.icons.count, id: \.self) { index in
+                RoundedRectangle(cornerRadius: icon * 0.24, style: .continuous)
+                    .fill(LinearGradient(colors: [Self.icons[index].0, Self.icons[index].1],
+                                         startPoint: .top, endPoint: .bottom))
+                    .frame(width: icon, height: icon)
             }
-            .frame(width: width, height: height)
         }
-        .frame(width: width, height: height)
+        .padding(.horizontal, height * 0.16)
+        .frame(height: height)
+        .modifier(MiniDockGlass(cornerRadius: height * 0.38))
+    }
+}
+
+private struct MiniDockGlass: ViewModifier {
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        if #available(macOS 26.0, *) {
+            content.glassEffect(.regular, in: shape)
+        } else {
+            content.background(.ultraThinMaterial, in: shape)
+        }
     }
 }
