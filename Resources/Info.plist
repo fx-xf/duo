@@ -2,32 +2,32 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleName</key>
-	<string>Duo</string>
 	<key>CFBundleDisplayName</key>
 	<string>Duo</string>
 	<key>CFBundleExecutable</key>
 	<string>Duo</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.duo.Duo</string>
+	<key>CFBundleName</key>
+	<string>Duo</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.5</string>
+	<string>0.5.1</string>
 	<key>CFBundleVersion</key>
-	<string>6</string>
-	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
+	<string>7</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Duo shows your headphones' battery beside the Dock.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Your desktop folds away as you close the lid.</string>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Duo shows your headphones' battery beside the Dock.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 </dict>
