@@ -6,10 +6,10 @@ struct LidModel {
     /// The fold starts once the lid is closed past this angle. Above it the
     /// desktop is left alone, however far the lid is opened or nudged.
     var startAngle: Double = 80
-    /// Also measure the fold from wherever the lid last came to rest: every
-    /// movement folds, and a lid that stops above the threshold gets its desktop
-    /// back at whatever angle you left it. Below the threshold the ordinary fold
-    /// still holds, so closing the lid always plays in full, however slowly.
+    /// Measure the fold from wherever the lid last came to rest instead: every
+    /// movement folds, by exactly how far the lid has come down, and a lid that
+    /// stops gets its desktop back at whatever angle you leave it — however far
+    /// it is from shut. The threshold plays no part.
     var dynamic = false
 
     private(set) var springAngle: Double
@@ -58,14 +58,11 @@ struct LidModel {
         springVelocity += (-stiffness * (springAngle - target) - damping * springVelocity) * dt
         springAngle += springVelocity * dt
 
-        let start = max(startAngle, 1)
-        let thresholdTilt = max(0, start - springAngle)
-
         guard dynamic else {
             anchor = springAngle
             trail.removeAll()
             stillFor = 0
-            return finish(thresholdTilt)
+            return finish(max(startAngle, 1) - springAngle)
         }
 
         slowAngle += (target - slowAngle) * min(1, dt / 0.12)
@@ -85,12 +82,11 @@ struct LidModel {
             if anchor - springAngle < 0.4 { anchor = springAngle }
         }
 
-        let movementTilt = max(0, anchor - springAngle - Self.deadZone)
-        return finish(max(movementTilt, thresholdTilt))
+        return finish(anchor - springAngle - Self.deadZone)
     }
 
     private mutating func finish(_ degrees: Double) -> Double {
-        tilt = min(Self.maxTilt, degrees)
+        tilt = min(Self.maxTilt, max(0, degrees))
         progress = min(1, tilt / max(startAngle, 1))
         return progress
     }

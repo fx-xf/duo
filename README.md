@@ -103,7 +103,7 @@ point; without it Duo works the Dock's length out from its icons.
 | Setting | Default | What it does |
 |---|---|---|
 | **Starts below** | 80° | Above this hinge angle nothing happens, however you move the lid. Below it, the glass tilts with the hinge. |
-| **Follow every movement** | off | Also measures the fold from wherever the lid last rested: bring it down ten degrees and the desktop folds by ten, then unfolds once the lid stops. Below the threshold the full fold still plays, however slowly you close. |
+| **Follow every movement** | off | Measures the fold from wherever the lid last rested instead: bring it down ten degrees and the desktop folds by ten, then unfolds as soon as the lid stops — at any angle, until it is shut. A quick close still plays the whole fold. **Starts below** is set aside while this is on. |
 | **System widgets** | off | The Duo glyph beside the Dock, and a headset's while one is playing — see [Widgets](#widgets). |
 | **Perspective** | 100% | Where you sit. 100% puts your eye half a metre from the screen; less reads as sitting farther back. |
 | **Variable blur** | 65% | How quickly frost grows with the gap. |

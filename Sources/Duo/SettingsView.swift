@@ -122,14 +122,18 @@ struct AppearancePane: View {
 
                 GroupBox {
                     VStack(alignment: .leading, spacing: 10) {
-                        Toggle("Follow every movement", isOn: $prefs.dynamicFold)
+                        Toggle("Follow every movement", isOn: $prefs.dynamicFold.animation(.easeOut(duration: 0.2)))
                             .toggleStyle(.switch)
-                        Text("Folds by however far you have closed the lid from where it last rested, and hands the desktop back when it stops. Below the threshold the full fold still plays, however slowly you close.")
+                        Text("Folds by however far you have closed the lid from where it last rested, and hands the desktop back as soon as it stops — at any angle, until the lid is shut.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         Divider()
                         angleRow("Starts below", value: $prefs.startAngle)
-                        Text("Nothing happens above this angle, however you move the lid.")
+                            .disabled(prefs.dynamicFold)
+                            .opacity(prefs.dynamicFold ? 0.45 : 1)
+                        Text(prefs.dynamicFold
+                             ? "Not used while Follow every movement is on: every movement folds, wherever the lid is."
+                             : "Nothing happens above this angle, however you move the lid.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                         Divider()
