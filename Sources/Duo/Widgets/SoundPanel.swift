@@ -99,6 +99,10 @@ final class SoundControl: ObservableObject {
     private var deviceListeners: [Listener] = []
     /// A mode just asked for, shown at once while the headset catches up.
     private var pendingMode: (mode: ListeningMode, until: Date)?
+    /// The volume last written. A headset keeps only sixteen steps and answers
+    /// each write with the nearest one, a beat late; those answers mustn't drag
+    /// the knob back.
+    private var writtenVolume: (level: Double, at: Date)?
 
     var selectedOutput: AudioOutput? { outputs.first { $0.id == selected } }
 
@@ -131,10 +135,13 @@ final class SoundControl: ObservableObject {
 
     func setVolume(_ value: Double) {
         guard canSetVolume else { return }
-        var level = Float32(min(max(value, 0), 1))
+        let target = min(max(value, 0), 1)
+        volume = target
+        if let written = writtenVolume, abs(written.level - target) < 0.004 { return }
+        writtenVolume = (target, Date())
+        var level = Float32(target)
         var address = Self.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
         AudioObjectSetPropertyData(selected, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &level)
-        volume = Double(level)
         // Turning it up turns the sound back on, as the menu bar does.
         if muted, level > 0 {
             var off: UInt32 = 0
@@ -163,6 +170,7 @@ final class SoundControl: ObservableObject {
         if current != selected {
             selected = current
             pendingMode = nil
+            writtenVolume = nil
             deviceListeners.forEach(remove)
             deviceListeners.removeAll()
             let refresh: () -> Void = { [weak self] in self?.readDevice() }
@@ -179,7 +187,15 @@ final class SoundControl: ObservableObject {
     private func readDevice() {
         let device = selected
         let level: Float32? = Self.value(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
-        volume = Double(level ?? 0)
+        let reported = Double(level ?? 0)
+        // The headset's own rounding of what was just written: keep the knob
+        // where the hand left it. Anything else — the volume keys, another
+        // app — moves it.
+        if let written = writtenVolume, Date().timeIntervalSince(written.at) < 1, abs(reported - written.level) < 0.07 {
+            volume = written.level
+        } else {
+            volume = reported
+        }
         muted = (Self.value(device, kAudioDevicePropertyMute) as UInt32?).map { $0 != 0 } ?? false
         canSetVolume = level != nil && Self.settable(device, kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
 
@@ -500,12 +516,15 @@ private struct VolumeSlider: View {
     let enabled: Bool
     let set: (Double) -> Void
 
+    /// While dragging, the knob follows the hand and nothing else.
+    @State private var dragged: Double?
+
     private static let knob = CGSize(width: 21, height: 14)
 
     var body: some View {
         GeometryReader { proxy in
             let travel = max(proxy.size.width - Self.knob.width, 1)
-            let x = travel * min(max(value, 0), 1)
+            let x = travel * min(max(dragged ?? value, 0), 1)
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(Color.primary.opacity(0.12))
@@ -522,10 +541,16 @@ private struct VolumeSlider: View {
             }
             .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
-                guard enabled else { return }
-                set(min(max((drag.location.x - Self.knob.width / 2) / travel, 0), 1))
-            })
+            .gesture(DragGesture(minimumDistance: 0)
+                .onChanged { drag in
+                    guard enabled else { return }
+                    let level = min(max((drag.location.x - Self.knob.width / 2) / travel, 0), 1)
+                    var instant = Transaction()
+                    instant.disablesAnimations = true
+                    withTransaction(instant) { dragged = level }
+                    set(level)
+                }
+                .onEnded { _ in dragged = nil })
         }
         .frame(height: 20)
         .opacity(enabled ? 1 : 0.45)
