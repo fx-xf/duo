@@ -103,6 +103,9 @@ final class SoundControl: ObservableObject {
     /// each write with the nearest one, a beat late; those answers mustn't drag
     /// the knob back.
     private var writtenVolume: (level: Double, at: Date)?
+    private var queuedVolume: Float32?
+    private var writingVolume = false
+    private let volumeWriter = DispatchQueue(label: "app.duo.volume", qos: .userInitiated)
 
     var selectedOutput: AudioOutput? { outputs.first { $0.id == selected } }
 
@@ -139,14 +142,34 @@ final class SoundControl: ObservableObject {
         volume = target
         if let written = writtenVolume, abs(written.level - target) < 0.004 { return }
         writtenVolume = (target, Date())
-        var level = Float32(target)
-        var address = Self.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
-        AudioObjectSetPropertyData(selected, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &level)
+        queuedVolume = Float32(target)
+        writeVolume()
+    }
+
+    /// A write to a Bluetooth headset can hold the caller for tens of
+    /// milliseconds — long enough to stall every frame on the main thread. So
+    /// writes go out on their own queue, one at a time, and only the latest
+    /// waiting value is ever sent.
+    private func writeVolume() {
+        guard !writingVolume, let level = queuedVolume else { return }
+        queuedVolume = nil
+        writingVolume = true
+        let device = selected
         // Turning it up turns the sound back on, as the menu bar does.
-        if muted, level > 0 {
-            var off: UInt32 = 0
-            var mute = Self.address(kAudioDevicePropertyMute)
-            AudioObjectSetPropertyData(selected, &mute, 0, nil, UInt32(MemoryLayout<UInt32>.size), &off)
+        let unmute = muted && level > 0
+        volumeWriter.async { [weak self] in
+            var value = level
+            var address = Self.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume)
+            AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &value)
+            if unmute {
+                var off: UInt32 = 0
+                var mute = Self.address(kAudioDevicePropertyMute)
+                AudioObjectSetPropertyData(device, &mute, 0, nil, UInt32(MemoryLayout<UInt32>.size), &off)
+            }
+            DispatchQueue.main.async {
+                self?.writingVolume = false
+                self?.writeVolume()
+            }
         }
     }
 
@@ -171,6 +194,7 @@ final class SoundControl: ObservableObject {
             selected = current
             pendingMode = nil
             writtenVolume = nil
+            queuedVolume = nil
             deviceListeners.forEach(remove)
             deviceListeners.removeAll()
             let refresh: () -> Void = { [weak self] in self?.readDevice() }

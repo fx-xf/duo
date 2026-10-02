@@ -38,6 +38,7 @@ struct LidModel {
     private static let stillWindow = 0.45
     private static let stillDrift = 0.6
     private static let settleDelay = 0.08
+    private static let springSlice = 1.0 / 120
     private static let releaseTime = 0.25
 
     init(angle: Double) {
@@ -51,12 +52,18 @@ struct LidModel {
         clock += dt
 
         // Tight on the way down so the glass keeps up with the lid; a softer,
-        // slightly bouncy spring on the way up gives the snap back.
-        let closing = target < springAngle
-        let stiffness: Double = closing ? 900 : 420
-        let damping: Double = closing ? 60 : 30
-        springVelocity += (-stiffness * (springAngle - target) - damping * springVelocity) * dt
-        springAngle += springVelocity * dt
+        // slightly bouncy spring on the way up gives the snap back. Stepped in
+        // slices: a spring this stiff only holds still at 30 fps or better, and
+        // a stalled frame would otherwise set it ringing on a rattle of a degree.
+        let slices = max(1, Int((dt / Self.springSlice).rounded(.up)))
+        let slice = dt / Double(slices)
+        for _ in 0..<slices {
+            let closing = target < springAngle
+            let stiffness: Double = closing ? 900 : 420
+            let damping: Double = closing ? 60 : 30
+            springVelocity += (-stiffness * (springAngle - target) - damping * springVelocity) * slice
+            springAngle += springVelocity * slice
+        }
 
         guard dynamic else {
             anchor = springAngle
