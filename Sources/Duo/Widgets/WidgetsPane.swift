@@ -31,7 +31,7 @@ struct WidgetsPane: View {
                         VStack(alignment: .leading, spacing: 9) {
                             rule("circle.dashed", "Duo", "Always. The battery on the ring — green while charging, yellow in Low Power Mode, red when low — the network in the middle, the volume on the four dots.")
                             Divider()
-                            rule("airpodspro", "Headphones", "While a Bluetooth headset is the output: its battery on the ring, the buds in blue.")
+                            rule("airpodspro", "Headphones", "While a Bluetooth headset is the output: its battery on the ring, the buds in blue. Click it for the sound menu — volume, outputs and listening mode.")
                         }
                         .padding(6)
                     }
@@ -45,7 +45,7 @@ struct WidgetsPane: View {
                                 Text("Lined up with the Dock")
                                     .font(.system(size: 12))
                                 Text(shelf.dockIsExact
-                                     ? "Measured exactly, through Accessibility."
+                                     ? "Measured exactly, minimised windows and all."
                                      : "Estimated from the icons in the Dock. Allow Accessibility for an exact fit.")
                                     .font(.system(size: 11))
                                     .foregroundStyle(.secondary)

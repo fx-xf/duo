@@ -10,7 +10,7 @@ struct DockLayout: Equatable {
     /// The Dock itself, in screen coordinates.
     var frame: CGRect
     var tileSize: CGFloat
-    /// Measured through Accessibility rather than estimated from the icon count.
+    /// Measured rather than estimated from the icon count.
     var exact: Bool
     var autohides: Bool
 
@@ -42,11 +42,54 @@ enum DockProbe {
         let tile = CGFloat(storedTile > 0 ? storedTile : 64)
         let autohides = prefs?.bool(forKey: "autohide") ?? false
 
+        if let band = systemBand(), screen.frame.intersects(band), band.width > 0, band.height > 0 {
+            return DockLayout(edge: edge, frame: pill(in: band, edge: edge, tile: tile),
+                              tileSize: tile, exact: true, autohides: autohides)
+        }
         if let frame = accessibilityFrame(), screen.frame.intersects(frame), frame.width > 0, frame.height > 0 {
             return DockLayout(edge: edge, frame: frame, tileSize: tile, exact: true, autohides: autohides)
         }
         return DockLayout(edge: edge, frame: estimate(edge: edge, tile: tile, screen: screen, prefs: prefs),
                           tileSize: tile, exact: false, autohides: autohides)
+    }
+
+    // MARK: from the window server
+
+    private typealias ConnectionFunction = @convention(c) () -> Int32
+    private typealias DockRectFunction = @convention(c) (Int32, UnsafeMutablePointer<CGRect>, UnsafeMutablePointer<Int32>) -> Int32
+
+    private static let skyLight = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY)
+    private static let mainConnection = dlsym(skyLight, "SLSMainConnectionID").map { unsafeBitCast($0, to: ConnectionFunction.self) }
+    private static let dockRect = dlsym(skyLight, "SLSGetDockRectWithReason").map { unsafeBitCast($0, to: DockRectFunction.self) }
+
+    /// The strip the Dock keeps for itself, as the window server lays windows
+    /// out around it — the same figure window managers such as yabai use. Its
+    /// length is the Dock's own, down to the last minimised window, and reading
+    /// it needs no permission at all.
+    private static func systemBand() -> CGRect? {
+        guard let mainConnection, let dockRect else { return nil }
+        var rect = CGRect.zero
+        var reason: Int32 = 0
+        guard dockRect(mainConnection(), &rect, &reason) == 0, rect.width > 0, rect.height > 0 else { return nil }
+        // Measured from the top left of the main screen, downward.
+        let mainHeight = NSScreen.screens.first?.frame.height ?? 0
+        return CGRect(x: rect.minX, y: mainHeight - rect.maxY, width: rect.width, height: rect.height)
+    }
+
+    /// The pill inside the strip: as long as the strip, as thick as the icons
+    /// make it, floating a few points off the screen edge.
+    private static func pill(in band: CGRect, edge: DockEdge, tile: CGFloat) -> CGRect {
+        let thickness = tile * 74 / 58
+        let depth = edge == .bottom ? band.height : band.width
+        let lift = depth > thickness ? min(4, depth - thickness) : 0
+        switch edge {
+        case .bottom:
+            return CGRect(x: band.minX, y: band.minY + lift, width: band.width, height: thickness)
+        case .left:
+            return CGRect(x: band.minX + lift, y: band.minY, width: thickness, height: band.height)
+        case .right:
+            return CGRect(x: band.maxX - lift - thickness, y: band.minY, width: thickness, height: band.height)
+        }
     }
 
     /// The Dock's own list of icons, as Accessibility sees it.
@@ -78,8 +121,8 @@ enum DockProbe {
         return nil
     }
 
-    /// Without Accessibility: count what the Dock shows and lay it out the way
-    /// the Dock does. The proportions were measured off a macOS 27 Dock at a
+    /// Last resort: count what the Dock shows and lay it out the way the Dock
+    /// does. Misses minimised windows. The proportions were measured off a macOS 27 Dock at a
     /// 58 pt tile: icons 62 pt apart, 28 pt more per separator, a 74 pt pill
     /// floating 4 pt off the edge. Close, not exact.
     private static func estimate(edge: DockEdge, tile: CGFloat, screen: NSScreen, prefs: UserDefaults?) -> CGRect {
@@ -100,26 +143,20 @@ enum DockProbe {
 
         let items = 1 + persistent.count + middle.count + others + 1
         let separators = (middle.isEmpty ? 0 : 1) + 1
-        let thickness = tile * 74 / 58
         let length = CGFloat(items) * tile * 1.07 + CGFloat(separators) * tile * 0.48 + tile * 0.25
-        let offEdge: CGFloat = 4
 
+        let band: CGRect
         switch edge {
         case .bottom:
-            let band = screen.visibleFrame.minY - screen.frame.minY
-            let lift = band > thickness ? min(offEdge, band - thickness) : 0
-            return CGRect(x: screen.frame.midX - length / 2, y: screen.frame.minY + lift,
-                          width: length, height: thickness)
+            band = CGRect(x: screen.frame.midX - length / 2, y: screen.frame.minY,
+                          width: length, height: screen.visibleFrame.minY - screen.frame.minY)
         case .left:
-            let band = screen.visibleFrame.minX - screen.frame.minX
-            let lift = band > thickness ? min(offEdge, band - thickness) : 0
-            return CGRect(x: screen.frame.minX + lift, y: screen.visibleFrame.midY - length / 2,
-                          width: thickness, height: length)
+            band = CGRect(x: screen.frame.minX, y: screen.visibleFrame.midY - length / 2,
+                          width: screen.visibleFrame.minX - screen.frame.minX, height: length)
         case .right:
-            let band = screen.frame.maxX - screen.visibleFrame.maxX
-            let lift = band > thickness ? min(offEdge, band - thickness) : 0
-            return CGRect(x: screen.frame.maxX - lift - thickness, y: screen.visibleFrame.midY - length / 2,
-                          width: thickness, height: length)
+            band = CGRect(x: screen.visibleFrame.maxX, y: screen.visibleFrame.midY - length / 2,
+                          width: screen.frame.maxX - screen.visibleFrame.maxX, height: length)
         }
+        return pill(in: band, edge: edge, tile: tile)
     }
 }

@@ -17,6 +17,8 @@ struct WidgetStack: View {
     let size: CGFloat
     let gap: CGFloat
     let towardDock: Edge
+    var hovered: WidgetKind? = nil
+    var onTap: ((WidgetKind) -> Void)? = nil
 
     private var horizontal: Bool { towardDock == .leading || towardDock == .trailing }
 
@@ -49,6 +51,10 @@ struct WidgetStack: View {
     private var bubbles: some View {
         ForEach(ordered) { item in
             WidgetBubble(face: item.face, size: size)
+                .scaleEffect(hovered == item.kind ? 1.07 : 1)
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: hovered == item.kind)
+                .contentShape(Rectangle())
+                .onTapGesture { onTap?(item.kind) }
                 .transition(.bud(from: towardDock, distance: size + gap))
         }
     }
@@ -85,19 +91,25 @@ extension AnyTransition {
 // MARK: - The live shelf
 
 /// System widgets beside the Dock: the Duo glyph always, a headset while one is
-/// playing. Two click-through windows, one either side of the Dock.
+/// playing. Two click-through windows, one either side of the Dock; the headset
+/// takes a click, and opens the sound menu.
 final class WidgetShelf: ObservableObject {
     @Published private(set) var dockIsExact = false
 
     let status = SystemStatus()
     fileprivate let state = ShelfState()
     private let prefs = Preferences.shared
+    private let soundPanel = SoundPanel()
 
     private var windows: [ShelfSide: NSWindow] = [:]
     private var layout: DockLayout?
     private var dockTimer: Timer?
+    private var pointerMonitors: [Any] = []
     private var live = Set<AnyCancellable>()
     private var cancellables = Set<AnyCancellable>()
+
+    /// Widgets that answer a click. The rest let it through to the desktop.
+    private static let clickable: Set<WidgetKind> = [.headphones]
 
     /// Room around the discs for the spring to overshoot into.
     private static let pad: CGFloat = 18
@@ -138,8 +150,23 @@ final class WidgetShelf: ObservableObject {
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.relayout(animated: false) }
             .store(in: &live)
-        dockTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+        // Minimising a window grows the Dock without telling anyone. Asking the
+        // window server is cheap, so ask often.
+        dockTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
             self?.relayout(animated: true)
+            self?.trackPointer()
+        }
+
+        // Windows ignore the mouse until it is over a widget that takes clicks.
+        let track: (NSEvent) -> Void = { [weak self] _ in self?.trackPointer() }
+        if let global = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged], handler: track) {
+            pointerMonitors.append(global)
+        }
+        if let local = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged], handler: { event in
+            track(event)
+            return event
+        }) {
+            pointerMonitors.append(local)
         }
 
         // Switching on plays every widget in, one after another.
@@ -150,6 +177,10 @@ final class WidgetShelf: ObservableObject {
         live.removeAll()
         dockTimer?.invalidate()
         dockTimer = nil
+        pointerMonitors.forEach(NSEvent.removeMonitor)
+        pointerMonitors.removeAll()
+        soundPanel.close()
+        setHovered(nil)
         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
             state.leading = []
             state.trailing = []
@@ -195,6 +226,52 @@ final class WidgetShelf: ObservableObject {
         case .headphones:
             return .headphones(audio.headphones ?? .headphones, battery: status.headphoneBattery,
                                volume: audio.volume, muted: audio.isMuted)
+        }
+    }
+
+    // MARK: clicks
+
+    fileprivate func tapped(_ kind: WidgetKind) {
+        guard kind == .headphones, let layout, let bubble = bubbleFrame(kind) else { return }
+        soundPanel.toggle(from: bubble, edge: layout.edge, status: status)
+    }
+
+    private func trackPointer() {
+        let point = NSEvent.mouseLocation
+        let hovered = Self.clickable.first { bubbleFrame($0)?.contains(point) == true }
+        setHovered(hovered)
+    }
+
+    private func setHovered(_ kind: WidgetKind?) {
+        if state.hovered != kind { state.hovered = kind }
+        for (side, window) in windows {
+            let catches = kind.map { side == .leading ? state.leading.contains($0) : state.trailing.contains($0) } ?? false
+            if window.ignoresMouseEvents == catches { window.ignoresMouseEvents = !catches }
+        }
+    }
+
+    /// Where a widget sits on screen right now, or nil if it isn't showing.
+    private func bubbleFrame(_ kind: WidgetKind) -> CGRect? {
+        guard let layout else { return nil }
+        let side: ShelfSide
+        let index: Int
+        if let found = state.leading.firstIndex(of: kind) {
+            (side, index) = (.leading, found)
+        } else if let found = state.trailing.firstIndex(of: kind) {
+            (side, index) = (.trailing, found)
+        } else {
+            return nil
+        }
+        guard let window = windows[side], window.alphaValue > 0 else { return nil }
+        let frame = window.frame
+        let pad = Self.pad
+        let size = state.bubble
+        let offset = CGFloat(index) * (size + state.gap)
+        switch towardDock(edge: layout.edge, side: side) {
+        case .leading: return CGRect(x: frame.minX + pad + offset, y: frame.minY + pad, width: size, height: size)
+        case .trailing: return CGRect(x: frame.maxX - pad - size - offset, y: frame.minY + pad, width: size, height: size)
+        case .top: return CGRect(x: frame.minX + pad, y: frame.maxY - pad - size - offset, width: size, height: size)
+        case .bottom: return CGRect(x: frame.minX + pad, y: frame.minY + pad + offset, width: size, height: size)
         }
     }
 
@@ -245,15 +322,17 @@ final class WidgetShelf: ObservableObject {
     }
 
     private func makeWindow(_ side: ShelfSide) -> NSWindow {
-        let window = ShelfWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: false)
+        let window = ShelfWindow(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false
         window.ignoresMouseEvents = true
+        window.acceptsMouseMovedEvents = true
+        window.hidesOnDeactivate = false
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.dockWindow)) + 1)
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: ShelfSideView(shelf: self, state: state, status: status, side: side))
+        window.contentView = FirstClickHostingView(rootView: ShelfSideView(shelf: self, state: state, status: status, side: side))
         return window
     }
 }
@@ -262,8 +341,19 @@ fileprivate enum ShelfSide: Hashable {
     case leading, trailing
 }
 
-/// Shows beside the Dock and never takes focus from anything.
-private final class ShelfWindow: NSWindow {
+/// The edge of a side's window that faces the Dock.
+private func towardDock(edge: DockEdge, side: ShelfSide) -> Edge {
+    switch (edge, side) {
+    case (.bottom, .leading): return .trailing
+    case (.bottom, .trailing): return .leading
+    case (_, .leading): return .bottom
+    case (_, .trailing): return .top
+    }
+}
+
+/// Shows beside the Dock and never takes focus from anything — a click on it
+/// leaves the app you were in at the front.
+private final class ShelfWindow: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
@@ -274,6 +364,7 @@ fileprivate final class ShelfState: ObservableObject {
     @Published var trailing: [WidgetKind] = []
     @Published var bubble: CGFloat = 74
     @Published var edge: DockEdge = .bottom
+    @Published var hovered: WidgetKind?
     let gap: CGFloat = 10
 }
 
@@ -283,21 +374,15 @@ private struct ShelfSideView: View {
     @ObservedObject var status: SystemStatus
     let side: ShelfSide
 
-    private var towardDock: Edge {
-        switch (state.edge, side) {
-        case (.bottom, .leading): return .trailing
-        case (.bottom, .trailing): return .leading
-        case (_, .leading): return .bottom
-        case (_, .trailing): return .top
-        }
-    }
-
     var body: some View {
         let kinds = side == .leading ? state.leading : state.trailing
         WidgetStack(items: kinds.map { WidgetItem(kind: $0, face: shelf.face(for: $0)) },
                     size: state.bubble,
                     gap: state.gap,
-                    towardDock: towardDock)
-            .padding(18)
+                    towardDock: towardDock(edge: state.edge, side: side),
+                    hovered: state.hovered) { kind in
+            shelf.tapped(kind)
+        }
+        .padding(18)
     }
 }

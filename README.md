@@ -89,12 +89,13 @@ thick as the Dock, so a bigger Dock means bigger widgets.
 | Widget | When it shows |
 |---|---|
 | **Duo** | Always. The Mac's battery on the ring — green while charging, yellow in Low Power Mode, red when low — the network in the middle, the volume on the four dots. |
-| **Headphones** | While a Bluetooth headset is the output: its battery on the ring, the buds in blue, the volume below. |
+| **Headphones** | While a Bluetooth headset is the output: its battery on the ring, the buds in blue, the volume below. Click it and the menu bar's Sound menu opens beside it — the volume, every output, the headset's battery and its listening mode: Transparency, Adaptive or Noise Cancellation. |
 
 The glyph is [DuoBar](https://github.com/Mikeli7666/DuoBar)'s, drawn from its own
 measurements — the ring open at the bottom, three-band Wi-Fi, four volume dots, the bolt
-in the top of the ring. Allow Accessibility and the widgets line up with the Dock to the
-point; without it Duo works the Dock's length out from its icons.
+in the top of the ring. Duo asks the window server where the Dock is, so the widgets line
+up with it to the point and move as it grows — minimised windows and all — with no
+permission to grant.
 
 <br>
 
@@ -148,6 +149,7 @@ xcode-select --install   # if `swift build` isn't there yet
 | [`Sources/Duo/Widgets/DuoGlyphs.swift`](Sources/Duo/Widgets/DuoGlyphs.swift) | The Duo glyph: ring, Wi-Fi bands, volume dots, bolt |
 | [`Sources/Duo/Widgets/WidgetShelf.swift`](Sources/Duo/Widgets/WidgetShelf.swift) | What shows when, where it goes, how it buds |
 | [`Sources/Duo/Widgets/DockGeometry.swift`](Sources/Duo/Widgets/DockGeometry.swift) | Where the Dock is and how big |
+| [`Sources/Duo/Widgets/SoundPanel.swift`](Sources/Duo/Widgets/SoundPanel.swift) | The sound menu: volume, outputs, listening mode, through Core Audio |
 | [`Tools/make-readme-art.swift`](Tools/make-readme-art.swift) | Renders every picture in this README |
 
 <br>
