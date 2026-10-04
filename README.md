@@ -84,7 +84,9 @@ it buds from the Dock's edge and settles alongside, on nothing but the wallpaper
 with a soft shadow, the way DuoBar draws it —
 and a headset gets a glyph of its own that buds out the same way. They sit either side
 of a Dock at the bottom and above and below one on its side, and they are exactly as
-thick as the Dock, so a bigger Dock means bigger widgets.
+thick as the Dock, so a bigger Dock means bigger widgets. They go where the Dock goes:
+away with it when an app takes the full screen or the Dock hides itself, and back out
+with it when the pointer brings it up.
 
 | Widget | When it shows |
 |---|---|

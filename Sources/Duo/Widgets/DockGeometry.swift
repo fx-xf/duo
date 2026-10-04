@@ -62,6 +62,23 @@ enum DockProbe {
     private static let mainConnection = dlsym(skyLight, "SLSMainConnectionID").map { unsafeBitCast($0, to: ConnectionFunction.self) }
     private static let dockRect = dlsym(skyLight, "SLSGetDockRectWithReason").map { unsafeBitCast($0, to: DockRectFunction.self) }
 
+    private typealias CopySpacesFunction = @convention(c) (Int32) -> Unmanaged<CFArray>?
+    private static let copySpaces = dlsym(skyLight, "SLSCopyManagedDisplaySpaces").map { unsafeBitCast($0, to: CopySpacesFunction.self) }
+
+    /// Whether the Space on this screen belongs to an app in full screen —
+    /// where macOS tucks the Dock away until the pointer comes for it.
+    static func showsFullScreenSpace(_ screen: NSScreen) -> Bool {
+        guard let mainConnection, let copySpaces,
+              let displays = copySpaces(mainConnection())?.takeRetainedValue() as? [[String: Any]] else { return false }
+        // One entry per display, or a single one when displays share Spaces.
+        let display = displays.first { ($0["Display Identifier"] as? String) == screen.displayUUID }
+            ?? (displays.count == 1 ? displays.first : nil)
+        guard let current = display?["Current Space"] as? [String: Any] else { return false }
+        return (current["type"] as? Int) == fullScreenSpaceType
+    }
+
+    private static let fullScreenSpaceType = 4
+
     /// The strip the Dock keeps for itself, as the window server lays windows
     /// out around it — the same figure window managers such as yabai use. Its
     /// length is the Dock's own, down to the last minimised window, and reading
@@ -158,5 +175,14 @@ enum DockProbe {
                           width: screen.frame.maxX - screen.visibleFrame.maxX, height: length)
         }
         return pill(in: band, edge: edge, tile: tile)
+    }
+}
+
+private extension NSScreen {
+    /// The identifier the window server files this display's Spaces under.
+    var displayUUID: String? {
+        guard let number = deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
+              let uuid = CGDisplayCreateUUIDFromDisplayID(number.uint32Value)?.takeRetainedValue() else { return nil }
+        return CFUUIDCreateString(nil, uuid) as String
     }
 }

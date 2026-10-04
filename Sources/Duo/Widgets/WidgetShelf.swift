@@ -105,6 +105,13 @@ final class WidgetShelf: ObservableObject {
     private var layout: DockLayout?
     private var dockTimer: Timer?
     private var pointerMonitors: [Any] = []
+    /// The Dock is tucked away — a full-screen app, or set to hide itself — so
+    /// the widgets go with it and come out only when it does.
+    private var dockAway = false
+    private var onFullScreenSpace = false
+    private var revealed = false
+    private var reveal: DispatchWorkItem?
+    private var tuck: DispatchWorkItem?
     private var live = Set<AnyCancellable>()
     private var cancellables = Set<AnyCancellable>()
 
@@ -130,6 +137,7 @@ final class WidgetShelf: ObservableObject {
             windows[side] = makeWindow(side)
         }
         relayout(animated: false)
+        updateDockPresence()
         state.leading = []
         state.trailing = []
         windows.values.forEach { $0.orderFrontRegardless() }
@@ -150,11 +158,18 @@ final class WidgetShelf: ObservableObject {
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .sink { [weak self] _ in self?.relayout(animated: false) }
             .store(in: &live)
+        workspace.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
+            .sink { [weak self] _ in self?.updateDockPresence() }
+            .store(in: &live)
         // Minimising a window grows the Dock without telling anyone. Asking the
         // window server is cheap, so ask often.
         dockTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
-            self?.relayout(animated: true)
-            self?.trackPointer()
+            guard let self else { return }
+            self.updateDockPresence()
+            // On a full-screen Space the Dock isn't where it lives; keep the
+            // place it had on the desktop.
+            if !self.onFullScreenSpace || self.layout == nil { self.relayout(animated: true) }
+            self.trackPointer()
         }
 
         // Windows ignore the mouse until it is over a widget that takes clicks.
@@ -179,6 +194,9 @@ final class WidgetShelf: ObservableObject {
         dockTimer = nil
         pointerMonitors.forEach(NSEvent.removeMonitor)
         pointerMonitors.removeAll()
+        reveal?.cancel()
+        tuck?.cancel()
+        revealed = false
         soundPanel.close()
         setHovered(nil)
         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
@@ -195,10 +213,18 @@ final class WidgetShelf: ObservableObject {
 
     /// The Duo glyph — battery, network and volume in one, as on the iPhone Duo —
     /// always; a headset on the other side for as long as it is the output.
-    private func refresh(staggered: Bool = false) {
+    /// Nothing while the Dock is tucked away.
+    private func refresh(staggered: Bool = false, animated: Bool = true) {
         guard prefs.widgetsEnabled else { return }
-        let leading: [WidgetKind] = [.duo]
-        let trailing: [WidgetKind] = status.audio.headphones != nil ? [.headphones] : []
+        let out = !dockAway || revealed || soundPanel.isOpen
+        let leading: [WidgetKind] = out ? [.duo] : []
+        let trailing: [WidgetKind] = out && status.audio.headphones != nil ? [.headphones] : []
+
+        guard animated else {
+            state.leading = leading
+            state.trailing = trailing
+            return
+        }
 
         if staggered {
             for (index, kind) in (leading + trailing).enumerated() {
@@ -229,6 +255,79 @@ final class WidgetShelf: ObservableObject {
         }
     }
 
+    // MARK: with the Dock
+
+    /// A full-screen Space or a hiding Dock: the widgets leave with the Dock,
+    /// at once, the way it does when the Space changes.
+    private func updateDockPresence() {
+        guard let screen = NSScreen.builtIn ?? NSScreen.main else { return }
+        let fullScreen = DockProbe.showsFullScreenSpace(screen)
+        onFullScreenSpace = fullScreen
+        let away = fullScreen || (layout?.autohides ?? false)
+        guard away != dockAway else { return }
+        dockAway = away
+        revealed = false
+        reveal?.cancel()
+        tuck?.cancel()
+        Log.engine.notice("widgets \(away ? "tucked away" : "back", privacy: .public)\(fullScreen ? " (full-screen Space)" : "", privacy: .public)")
+        refresh(animated: false)
+    }
+
+    /// The pointer pressed against the Dock's edge brings the Dock out, and the
+    /// widgets with it; moving off it puts them all away again.
+    private func followDockReveal(_ point: CGPoint) {
+        guard dockAway, let layout, let screen = NSScreen.builtIn ?? NSScreen.main else { return }
+        let frame = screen.frame
+        let atEdge: Bool
+        let overDock: Bool
+        switch layout.edge {
+        case .bottom:
+            atEdge = point.y <= frame.minY + 1 && point.x >= frame.minX && point.x <= frame.maxX
+            overDock = point.y <= layout.frame.maxY + 8
+        case .left:
+            atEdge = point.x <= frame.minX + 1 && point.y >= frame.minY && point.y <= frame.maxY
+            overDock = point.x <= layout.frame.maxX + 8
+        case .right:
+            atEdge = point.x >= frame.maxX - 1 && point.y >= frame.minY && point.y <= frame.maxY
+            overDock = point.x >= layout.frame.minX - 8
+        }
+
+        if !revealed {
+            guard atEdge else {
+                reveal?.cancel()
+                reveal = nil
+                return
+            }
+            guard reveal == nil else { return }
+            // The Dock waits a beat before it comes out; so do the widgets.
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.reveal = nil
+                self.revealed = true
+                self.refresh()
+            }
+            reveal = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.revealDelay, execute: work)
+        } else if overDock || soundPanel.isOpen {
+            tuck?.cancel()
+            tuck = nil
+        } else if tuck == nil {
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.tuck = nil
+                self.revealed = false
+                self.refresh()
+            }
+            tuck = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: work)
+        }
+    }
+
+    private static var revealDelay: Double {
+        let stored = UserDefaults(suiteName: "com.apple.dock")?.object(forKey: "autohide-delay") as? Double
+        return min(max(stored ?? 0.2, 0), 2)
+    }
+
     // MARK: clicks
 
     fileprivate func tapped(_ kind: WidgetKind) {
@@ -238,6 +337,7 @@ final class WidgetShelf: ObservableObject {
 
     private func trackPointer() {
         let point = NSEvent.mouseLocation
+        followDockReveal(point)
         let hovered = Self.clickable.first { bubbleFrame($0)?.contains(point) == true }
         setHovered(hovered)
     }
@@ -316,8 +416,6 @@ final class WidgetShelf: ObservableObject {
             } else {
                 window.setFrame(frame, display: true)
             }
-            // An auto-hiding Dock leaves nothing to sit beside.
-            window.alphaValue = layout.autohides ? 0 : 1
         }
     }
 

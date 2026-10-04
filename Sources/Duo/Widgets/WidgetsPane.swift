@@ -15,7 +15,7 @@ struct WidgetsPane: View {
                         Toggle("Show system widgets beside the Dock",
                                isOn: $prefs.widgetsEnabled.animation(.spring(response: 0.42, dampingFraction: 0.9)))
                             .toggleStyle(.switch)
-                        Text("They sit either side of the Dock — above and below it when it stands on its side — match its size, and bud out of it the way the iPhone Duo's do.")
+                        Text("They sit either side of the Dock — above and below it when it stands on its side — match its size, and bud out of it the way the iPhone Duo's do. In full screen, or with a Dock that hides itself, they hide and come back with it.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
