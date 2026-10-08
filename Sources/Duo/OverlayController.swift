@@ -73,9 +73,13 @@ final class OverlayController {
         if !isVisible {
             isVisible = true
             window.reassertCollectionBehavior()
+            WindowServer.makeSticky(windowID)
             window.orderFrontRegardless()
             if !window.isOnActiveSpace {
-                Log.engine.error("overlay is not on this Space")
+                // Last resort: put it on the Space in front, whatever AppKit thinks.
+                WindowServer.makeSticky(windowID)
+                WindowServer.moveToActiveSpace(windowID)
+                Log.engine.error("overlay was not on this Space; moved it, now \(self.window.isOnActiveSpace ? "there" : "still missing", privacy: .public)")
             }
         }
     }
@@ -109,5 +113,36 @@ extension NSWindow {
         let behavior = collectionBehavior
         collectionBehavior = []
         collectionBehavior = behavior
+    }
+}
+
+/// Straight to the window server, for when AppKit's idea of a window's Spaces
+/// and the server's part ways — as the overlay's did, on one Space only even
+/// right after launch, with "all Spaces" set and set again.
+enum WindowServer {
+    private typealias Connection = @convention(c) () -> Int32
+    private typealias Tags = @convention(c) (Int32, UInt32, UnsafeMutablePointer<UInt64>, Int32) -> Int32
+    private typealias ActiveSpace = @convention(c) (Int32) -> UInt64
+    private typealias Move = @convention(c) (Int32, CFArray, UInt64) -> Void
+
+    private static let sky = dlopen("/System/Library/PrivateFrameworks/SkyLight.framework/SkyLight", RTLD_LAZY)
+    private static let connection = dlsym(sky, "SLSMainConnectionID").map { unsafeBitCast($0, to: Connection.self) }
+    private static let setTags = dlsym(sky, "SLSSetWindowTags").map { unsafeBitCast($0, to: Tags.self) }
+    private static let activeSpace = dlsym(sky, "SLSGetActiveSpace").map { unsafeBitCast($0, to: ActiveSpace.self) }
+    private static let move = dlsym(sky, "SLSMoveWindowsToManagedSpace").map { unsafeBitCast($0, to: Move.self) }
+
+    /// The tag behind "can join all Spaces".
+    private static let stickyTag: UInt64 = 1 << 11
+
+    static func makeSticky(_ window: CGWindowID) {
+        guard let connection, let setTags else { return }
+        var tags = stickyTag
+        _ = setTags(connection(), window, &tags, 64)
+    }
+
+    static func moveToActiveSpace(_ window: CGWindowID) {
+        guard let connection, let activeSpace, let move else { return }
+        let cid = connection()
+        move(cid, [NSNumber(value: window)] as CFArray, activeSpace(cid))
     }
 }
