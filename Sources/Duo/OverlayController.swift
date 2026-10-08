@@ -72,7 +72,11 @@ final class OverlayController {
         view.draw()
         if !isVisible {
             isVisible = true
+            window.reassertCollectionBehavior()
             window.orderFrontRegardless()
+            if !window.isOnActiveSpace {
+                Log.engine.error("overlay is not on this Space")
+            }
         }
     }
 
@@ -92,5 +96,18 @@ final class OverlayController {
         let millimetres = CGDisplayScreenSize(screen.displayID).width
         guard millimetres > 0 else { return 10 }
         return Double(screen.frame.width * screen.backingScaleFactor) / millimetres
+    }
+}
+
+extension NSWindow {
+    /// Sets the collection behaviour afresh. A window kept out of sight can come
+    /// back pinned to the one Space it was last shown on, its behaviour still
+    /// reading "all Spaces" — the overlay did, after days of sleeps, and folded
+    /// only on the first desktop. Ordering it in again doesn't help, and AppKit
+    /// skips setting a behaviour that hasn't changed, so clear it first.
+    func reassertCollectionBehavior() {
+        let behavior = collectionBehavior
+        collectionBehavior = []
+        collectionBehavior = behavior
     }
 }

@@ -140,7 +140,10 @@ final class WidgetShelf: ObservableObject {
         updateDockPresence()
         state.leading = []
         state.trailing = []
-        windows.values.forEach { $0.orderFrontRegardless() }
+        windows.values.forEach {
+            $0.reassertCollectionBehavior()
+            $0.orderFrontRegardless()
+        }
 
         status.objectWillChange
             .receive(on: RunLoop.main)
